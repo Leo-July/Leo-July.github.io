@@ -1,0 +1,891 @@
+
+<!DOCTYPE html>
+<html lang="zh-cn">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="leo July&#39;s blog">
+    <title>axios 二次封装，带有静默模式 - leo July&#39;s blog</title>
+    <meta name="author" content="Leo July">
+    
+        <meta name="keywords" content="javascript,vue,axios">
+    
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"},"articleBody":"\ndemo   \n实现封装代码的文件\n1234567891011┣━  http               // 采用类中的set,get方式监听请求接口队列┃     ┣━ axios.config.js   // 创建axios实例┃     ┣━ default.js    // 默认配置┃     ┣━ index.js      // 导出最终的request方法┃     ┣━ request.js    // request拦截器┃     ┣━ response.js   // response拦截器┣━  http_store         // \b试了下采用vuex 的\b watch api 监听请求队列┃     ┣━ default.js┃     ┣━ index.js      // vuex监听\b实现\b代码放在了这里┃     ┣━ request.js┃     ┣━ response.js\n\n实现原理是在类\b\bclass 中声明 requestList请求队列变量，然后通过set get函数监听请求队列变化，当请求队列为空的时候，关闭loading，反之显示。\naxios.config.js实现静默功能的主要代码，和声明axios实例\n1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950515253import &#123; Indicator, Toast &#125; from 'mint-ui'import axios from './default'import request from './request'import response from './response'export default new class Axios &#123;  constructor() &#123;    this.axios = axios.create() // 创建实例    this.axios.interceptors.request.use(      // 添加请求拦截器      request.config,      request.error,    )    this.axios.interceptors.response.use(      // 添加响应拦截器      response.res,      response.error,    )    this._requestList = []    this.Indicator = Indicator    this.Toast = Toast  &#125;  get requestList() &#123;    return this._requestList  &#125;  set requestList(list) &#123;    this._requestList = list // 设置请求队列    if (this._requestList.length === 0) &#123;      // 如果请求队列为空了，就关闭loading      this.Indicator.close()    &#125; else &#123;      // 反知显示loading      this.Indicator.open(&#123;        spinnerType: 'fading-circle',      &#125;)    &#125;  &#125;  /**   * 当请求队列发生变化的时候，触发此方法   * @param &#123;Object&#125; id  \b请求队列入队或出队的id   * @param &#123;Boolean&#125; remove  true: 出队   false: 默认  进队   */  setRequestList(&#123; id = '', remove = false &#125; = &#123;&#125;) &#123;    const array = [...this._requestList]    remove ? array.splice(array.indexOf(id), 1) : array.push(id)    this.requestList = array  &#125;&#125;()\ndefault.jsaxios默认配置\n123456789101112131415import axios from 'axios'if (process.env.NODE_ENV === 'development') &#123;  axios.defaults.baseURL = 'http://dev.xxx.com'&#125; else if (process.env.NODE_ENV === 'production') &#123;  axios.defaults.baseURL = 'http://prod.xxx.com'&#125;axios.defaults.withCredentials = trueaxios.defaults.headers.common['Content-Type'] = 'application/json'axios.defaults.baseURL = '/'axios.defaults.timeout = 5000export default axios\nrequest.js123456789101112131415161718import qs from 'qs'export default &#123;  config: config =&gt; &#123;    if (      config.method === 'post' ||      config.method === 'put' ||      config.method === 'delete'    ) &#123; // 序列化      config.headers['Content-Type'] = 'application/json; charset=utf-8'      config.data = qs.stringify(config.data);    &#125;    return config  &#125;,  error: error =&gt; &#123;    return Promise.reject(error)  &#125;&#125;\nresponse.js12345678910111213export default &#123;  res: res =&gt; &#123;    let data = res.data    if (~~data.code === 200) &#123;      return data    &#125;    return Promise.reject(data)  &#125;,  error: error =&gt; &#123;    return Promise.reject(error)  &#125;&#125;\nindex.js1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950515253import Axios from './axios.config'/** * 请求方法 * * @param &#123;String&#125;    url      接口地址 * @param &#123;String&#125;    methods  请求方法 * @param &#123;Object&#125;    headers  headers 设置 * @param &#123;Object&#125;    data     参数 * @param &#123;Boolean&#125;   silent   静默模式 * @param &#123;Boolean&#125;   all      返回接口所有数据（包括code、message、data）/ 只是data * @param &#123;Function&#125;  success  请求成功回调 * @param &#123;Function&#125;  fail  请求失败回调 * @param &#123;Function&#125;  complete   请求结束回调 * */export default async function request(&#123;  url = '',  method = 'get',  data = &#123;&#125;,  params = &#123;&#125;,  headers = &#123;&#125;,  success = () =&gt; &#123;&#125;,  fail = () =&gt; &#123;&#125;,  complete = () =&gt; &#123;&#125;,  silent = false,  all = false,&#125; = &#123;&#125;) &#123;  // console.log(`$&#123;url&#125;============&gt;`, methods, data, silent)  const id = `$&#123;url&#125;TIME$&#123;new Date().getTime()&#125;` // 生成id  if (!silent) &#123;    // 非静默模式，压入请求队列    Axios.setRequestList(&#123; id &#125;)  &#125;  try &#123;    const result = await Axios.axios(&#123;      url,      method,      headers,      data,      params,    &#125;)    Axios.setRequestList(&#123; el: id, remove: true &#125;) // 请求完成后，出队    all ? success(result) : success(result.data)  &#125; catch (error) &#123;    Axios.setRequestList(&#123; el: id, remove: true &#125;) // 请求完成后，出队    if (!silent) Axios.Toast(error.msg || error.message || error)    fail(error)  &#125; finally &#123;    complete()  &#125;&#125;\n返回promise的request123456789101112131415161718192021222324252627282930313233343536import Axios from './axios.config'/** * 请求方法 * * @param &#123;String&#125;    url      接口地址 * @param &#123;String&#125;    methods  请求方法 * @param &#123;Object&#125;    headers  headers 设置 * @param &#123;Object&#125;    data     参数 * @param &#123;Boolean&#125;   silent   静默模式 * */export default function request(&#123; url = '', method = 'get', data = &#123;&#125;, params = &#123;&#125;, headers = &#123;&#125;, silent = false &#125; = &#123;&#125;) &#123;  // console.log(`$&#123;url&#125;============&gt;`, methods, data, silent)  const id = `$&#123;url&#125;TIME$&#123;new Date().getTime()&#125;` // 生成id  if (!silent) &#123;    // 非静默模式，压入请求队列    Axios.setRequestList(&#123; id &#125;)  &#125;  return Axios.axios(&#123;    url,    method,    headers,    data,    params,  &#125;)    .then(() =&gt; &#123;      Axios.setRequestList(&#123; el: id, remove: true &#125;) // 请求完成后，出队    &#125;)    .catch(error =&gt; &#123;      Axios.setRequestList(&#123; el: id, remove: true &#125;) // 请求完成后，出队      if (!silent) Axios.Toast(error.msg || error.message || error)    &#125;)&#125;\ngit源码地址\naxios 中文使用文档","dateCreated":"2018-11-26T15:27:31+08:00","dateModified":"2019-04-24T14:18:50+08:00","datePublished":"2018-11-26T15:27:31+08:00","description":"\n","headline":"axios 二次封装，带有静默模式","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://leo-july.github.io/2018/11/26/axios/"},"publisher":{"@type":"Organization","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180","logo":{"@type":"ImageObject","url":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"}},"url":"https://leo-july.github.io/2018/11/26/axios/","keywords":"vue"}</script>
+    <meta name="keywords" content="javascript,vue,axios">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="axios 二次封装，带有静默模式">
+<meta property="og:url" content="https://leo-july.github.io/2018/11/26/axios/index.html">
+<meta property="og:site_name" content="leo July&#39;s blog">
+<meta property="og:locale" content="zh-cn">
+<meta property="og:updated_time" content="2019-04-24T06:18:50.012Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="axios 二次封装，带有静默模式">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"/>
+    
+    
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="/assets/css/style-du2xmrqdqrl2ollgeiw050kpl6l4nbyz7bumjuurjgsxyopifvukebxc9lqe.min.css">
+    <!--STYLES END-->
+    
+
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">leo July&#39;s blog</a>
+    </div>
+    
+        
+            <a class="header-right-icon open-algolia-search" href="#search">
+        
+        
+            <i class="search fa-lg"></i>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180" alt="作者的图片">
+                </a>
+                <h4 class="sidebar-profile-name">Leo July</h4>
+                <!--  -->
+                    <h5 class="sidebar-profile-bio">vue,weex,ES6,js,jq,html5,less,css3,git,webpack</h5>
+                <!--  -->
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/ " title="首页">
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">首页</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-categories" title="分类">
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">分类</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-tags" title="标签">
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">标签</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-archives" title="归档">
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">归档</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link open-algolia-search" href="#search" title="搜索">
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">搜索</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="#about" title="关于">
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">关于</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://github.com/Leo-July" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="mailto:15563861385@163.com" target="_blank" rel="noopener" title="Emial">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Emial</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://xuebin.me" target="_blank" rel="noopener" title="xuebin.me">
+                    
+                        <i class="sidebar-button-icon fa fa-link" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">xuebin.me</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://zhangmiao.cc/" target="_blank" rel="noopener" title="zhangmiao.cc">
+                    
+                        <i class="sidebar-button-icon fa fa-link" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">zhangmiao.cc</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+            <div id="main" data-behavior="4"
+                 class="
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+        <div class="post-header main-content-wrap text-left">
+    
+        <h1 class="post-title">
+            axios 二次封装，带有静默模式
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2018-11-26T15:27:31+08:00">
+	
+		    11月 26, 2018
+    	
+    </time>
+    
+        <span>发布在 </span>
+        
+    <a class="category-link" href="/all-categories/vue/">vue</a>
+
+
+    
+</div>
+
+    
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<p><a href="http://demo.leojuly.top/axios/#/" target="_blank" rel="noopener">demo</a>   </p>
+<p>实现封装代码的文件</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">┣━  http               <span class="comment">// 采用类中的set,get方式监听请求接口队列</span></span><br><span class="line">┃     ┣━ axios.config.js   <span class="comment">// 创建axios实例</span></span><br><span class="line">┃     ┣━ <span class="keyword">default</span>.js    <span class="comment">// 默认配置</span></span><br><span class="line">┃     ┣━ index.js      <span class="comment">// 导出最终的request方法</span></span><br><span class="line">┃     ┣━ request.js    <span class="comment">// request拦截器</span></span><br><span class="line">┃     ┣━ response.js   <span class="comment">// response拦截器</span></span><br><span class="line">┣━  http_store         <span class="comment">// 试了下采用vuex 的 watch api 监听请求队列</span></span><br><span class="line">┃     ┣━ <span class="keyword">default</span>.js</span><br><span class="line">┃     ┣━ index.js      <span class="comment">// vuex监听实现代码放在了这里</span></span><br><span class="line">┃     ┣━ request.js</span><br><span class="line">┃     ┣━ response.js</span><br></pre></td></tr></table></figure>
+<hr>
+<h4 id="实现原理"><a href="#实现原理" class="headerlink" title="实现原理"></a>实现原理</h4><p>是在类<code>class</code> 中声明 <code>requestList</code>请求队列变量，然后通过<code>set</code> <code>get</code>函数监听请求队列变化，当请求队列为空的时候，关闭<code>loading</code>，反之显示。</p>
+<h4 id="axios-config-js"><a href="#axios-config-js" class="headerlink" title="axios.config.js"></a><code>axios.config.js</code></h4><p>实现静默功能的主要代码，和声明<code>axios</code>实例</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> &#123; Indicator, Toast &#125; <span class="keyword">from</span> <span class="string">'mint-ui'</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> axios <span class="keyword">from</span> <span class="string">'./default'</span></span><br><span class="line"><span class="keyword">import</span> request <span class="keyword">from</span> <span class="string">'./request'</span></span><br><span class="line"><span class="keyword">import</span> response <span class="keyword">from</span> <span class="string">'./response'</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">default</span> <span class="keyword">new</span> <span class="class"><span class="keyword">class</span> <span class="title">Axios</span> </span>&#123;</span><br><span class="line">  <span class="keyword">constructor</span>() &#123;</span><br><span class="line">    <span class="keyword">this</span>.axios = axios.create() <span class="comment">// 创建实例</span></span><br><span class="line">    <span class="keyword">this</span>.axios.interceptors.request.use(</span><br><span class="line">      <span class="comment">// 添加请求拦截器</span></span><br><span class="line">      request.config,</span><br><span class="line">      request.error,</span><br><span class="line">    )</span><br><span class="line">    <span class="keyword">this</span>.axios.interceptors.response.use(</span><br><span class="line">      <span class="comment">// 添加响应拦截器</span></span><br><span class="line">      response.res,</span><br><span class="line">      response.error,</span><br><span class="line">    )</span><br><span class="line"></span><br><span class="line">    <span class="keyword">this</span>._requestList = []</span><br><span class="line">    <span class="keyword">this</span>.Indicator = Indicator</span><br><span class="line">    <span class="keyword">this</span>.Toast = Toast</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  get requestList() &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">this</span>._requestList</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  set requestList(list) &#123;</span><br><span class="line">    <span class="keyword">this</span>._requestList = list <span class="comment">// 设置请求队列</span></span><br><span class="line">    <span class="keyword">if</span> (<span class="keyword">this</span>._requestList.length === <span class="number">0</span>) &#123;</span><br><span class="line">      <span class="comment">// 如果请求队列为空了，就关闭loading</span></span><br><span class="line">      <span class="keyword">this</span>.Indicator.close()</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      <span class="comment">// 反知显示loading</span></span><br><span class="line">      <span class="keyword">this</span>.Indicator.open(&#123;</span><br><span class="line">        spinnerType: <span class="string">'fading-circle'</span>,</span><br><span class="line">      &#125;)</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">/**</span></span><br><span class="line"><span class="comment">   * 当请求队列发生变化的时候，触发此方法</span></span><br><span class="line"><span class="comment">   * @param &#123;Object&#125; id  请求队列入队或出队的id</span></span><br><span class="line"><span class="comment">   * @param &#123;Boolean&#125; remove  true: 出队   false: 默认  进队</span></span><br><span class="line"><span class="comment">   */</span></span><br><span class="line">  setRequestList(&#123; id = <span class="string">''</span>, remove = <span class="literal">false</span> &#125; = &#123;&#125;) &#123;</span><br><span class="line">    <span class="keyword">const</span> array = [...this._requestList]</span><br><span class="line">    remove ? array.splice(array.indexOf(id), <span class="number">1</span>) : array.push(id)</span><br><span class="line">    <span class="keyword">this</span>.requestList = array</span><br><span class="line">  &#125;</span><br><span class="line">&#125;()</span><br></pre></td></tr></table></figure>
+<h4 id="default-js"><a href="#default-js" class="headerlink" title="default.js"></a><code>default.js</code></h4><p><code>axios</code>默认配置</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> axios <span class="keyword">from</span> <span class="string">'axios'</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (process.env.NODE_ENV === <span class="string">'development'</span>) &#123;</span><br><span class="line">  axios.defaults.baseURL = <span class="string">'http://dev.xxx.com'</span></span><br><span class="line">&#125; <span class="keyword">else</span> <span class="keyword">if</span> (process.env.NODE_ENV === <span class="string">'production'</span>) &#123;</span><br><span class="line">  axios.defaults.baseURL = <span class="string">'http://prod.xxx.com'</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">axios.defaults.withCredentials = <span class="literal">true</span></span><br><span class="line">axios.defaults.headers.common[<span class="string">'Content-Type'</span>] = <span class="string">'application/json'</span></span><br><span class="line">axios.defaults.baseURL = <span class="string">'/'</span></span><br><span class="line">axios.defaults.timeout = <span class="number">5000</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">default</span> axios</span><br></pre></td></tr></table></figure>
+<h4 id="request-js"><a href="#request-js" class="headerlink" title="request.js"></a><code>request.js</code></h4><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> qs <span class="keyword">from</span> <span class="string">'qs'</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">default</span> &#123;</span><br><span class="line">  config: <span class="function"><span class="params">config</span> =&gt;</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (</span><br><span class="line">      config.method === <span class="string">'post'</span> ||</span><br><span class="line">      config.method === <span class="string">'put'</span> ||</span><br><span class="line">      config.method === <span class="string">'delete'</span></span><br><span class="line">    ) &#123; <span class="comment">// 序列化</span></span><br><span class="line">      config.headers[<span class="string">'Content-Type'</span>] = <span class="string">'application/json; charset=utf-8'</span></span><br><span class="line">      config.data = qs.stringify(config.data);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> config</span><br><span class="line">  &#125;,</span><br><span class="line">  error: <span class="function"><span class="params">error</span> =&gt;</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">Promise</span>.reject(error)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="response-js"><a href="#response-js" class="headerlink" title="response.js"></a><code>response.js</code></h4><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">export</span> <span class="keyword">default</span> &#123;</span><br><span class="line">  res: <span class="function"><span class="params">res</span> =&gt;</span> &#123;</span><br><span class="line">    <span class="keyword">let</span> data = res.data</span><br><span class="line">    <span class="keyword">if</span> (~~data.code === <span class="number">200</span>) &#123;</span><br><span class="line">      <span class="keyword">return</span> data</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">Promise</span>.reject(data)</span><br><span class="line">  &#125;,</span><br><span class="line">  error: <span class="function"><span class="params">error</span> =&gt;</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">Promise</span>.reject(error)</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="index-js"><a href="#index-js" class="headerlink" title="index.js"></a><code>index.js</code></h4><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> Axios <span class="keyword">from</span> <span class="string">'./axios.config'</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 请求方法</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * @param &#123;String&#125;    url      接口地址</span></span><br><span class="line"><span class="comment"> * @param &#123;String&#125;    methods  请求方法</span></span><br><span class="line"><span class="comment"> * @param &#123;Object&#125;    headers  headers 设置</span></span><br><span class="line"><span class="comment"> * @param &#123;Object&#125;    data     参数</span></span><br><span class="line"><span class="comment"> * @param &#123;Boolean&#125;   silent   静默模式</span></span><br><span class="line"><span class="comment"> * @param &#123;Boolean&#125;   all      返回接口所有数据（包括code、message、data）/ 只是data</span></span><br><span class="line"><span class="comment"> * @param &#123;Function&#125;  success  请求成功回调</span></span><br><span class="line"><span class="comment"> * @param &#123;Function&#125;  fail  请求失败回调</span></span><br><span class="line"><span class="comment"> * @param &#123;Function&#125;  complete   请求结束回调</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">default</span> <span class="keyword">async</span> <span class="function"><span class="keyword">function</span> <span class="title">request</span>(<span class="params">&#123;</span></span></span><br><span class="line"><span class="function"><span class="params">  url = <span class="string">''</span>,</span></span></span><br><span class="line"><span class="function"><span class="params">  method = <span class="string">'get'</span>,</span></span></span><br><span class="line"><span class="function"><span class="params">  data = &#123;&#125;,</span></span></span><br><span class="line"><span class="function"><span class="params">  params = &#123;&#125;,</span></span></span><br><span class="line"><span class="function"><span class="params">  headers = &#123;&#125;,</span></span></span><br><span class="line"><span class="function"><span class="params">  success = (</span>) =&gt; </span>&#123;&#125;,</span><br><span class="line">  fail = <span class="function"><span class="params">()</span> =&gt;</span> &#123;&#125;,</span><br><span class="line">  complete = <span class="function"><span class="params">()</span> =&gt;</span> &#123;&#125;,</span><br><span class="line">  silent = <span class="literal">false</span>,</span><br><span class="line">  all = <span class="literal">false</span>,</span><br><span class="line">&#125; = &#123;&#125;) &#123;</span><br><span class="line">  <span class="comment">// console.log(`$&#123;url&#125;============&gt;`, methods, data, silent)</span></span><br><span class="line">  <span class="keyword">const</span> id = <span class="string">`<span class="subst">$&#123;url&#125;</span>TIME<span class="subst">$&#123;<span class="keyword">new</span> <span class="built_in">Date</span>().getTime()&#125;</span>`</span> <span class="comment">// 生成id</span></span><br><span class="line">  <span class="keyword">if</span> (!silent) &#123;</span><br><span class="line">    <span class="comment">// 非静默模式，压入请求队列</span></span><br><span class="line">    Axios.setRequestList(&#123; id &#125;)</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">try</span> &#123;</span><br><span class="line">    <span class="keyword">const</span> result = <span class="keyword">await</span> Axios.axios(&#123;</span><br><span class="line">      url,</span><br><span class="line">      method,</span><br><span class="line">      headers,</span><br><span class="line">      data,</span><br><span class="line">      params,</span><br><span class="line">    &#125;)</span><br><span class="line">    Axios.setRequestList(&#123; <span class="attr">el</span>: id, <span class="attr">remove</span>: <span class="literal">true</span> &#125;) <span class="comment">// 请求完成后，出队</span></span><br><span class="line">    all ? success(result) : success(result.data)</span><br><span class="line">  &#125; <span class="keyword">catch</span> (error) &#123;</span><br><span class="line">    Axios.setRequestList(&#123; <span class="attr">el</span>: id, <span class="attr">remove</span>: <span class="literal">true</span> &#125;) <span class="comment">// 请求完成后，出队</span></span><br><span class="line">    <span class="keyword">if</span> (!silent) Axios.Toast(error.msg || error.message || error)</span><br><span class="line">    fail(error)</span><br><span class="line">  &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">    complete()</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>返回<code>promise</code>的request<br><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> Axios <span class="keyword">from</span> <span class="string">'./axios.config'</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 请求方法</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * @param &#123;String&#125;    url      接口地址</span></span><br><span class="line"><span class="comment"> * @param &#123;String&#125;    methods  请求方法</span></span><br><span class="line"><span class="comment"> * @param &#123;Object&#125;    headers  headers 设置</span></span><br><span class="line"><span class="comment"> * @param &#123;Object&#125;    data     参数</span></span><br><span class="line"><span class="comment"> * @param &#123;Boolean&#125;   silent   静默模式</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">default</span> <span class="function"><span class="keyword">function</span> <span class="title">request</span>(<span class="params">&#123; url = <span class="string">''</span>, method = <span class="string">'get'</span>, data = &#123;&#125;, params = &#123;&#125;, headers = &#123;&#125;, silent = false &#125; = &#123;&#125;</span>) </span>&#123;</span><br><span class="line">  <span class="comment">// console.log(`$&#123;url&#125;============&gt;`, methods, data, silent)</span></span><br><span class="line">  <span class="keyword">const</span> id = <span class="string">`<span class="subst">$&#123;url&#125;</span>TIME<span class="subst">$&#123;<span class="keyword">new</span> <span class="built_in">Date</span>().getTime()&#125;</span>`</span> <span class="comment">// 生成id</span></span><br><span class="line">  <span class="keyword">if</span> (!silent) &#123;</span><br><span class="line">    <span class="comment">// 非静默模式，压入请求队列</span></span><br><span class="line">    Axios.setRequestList(&#123; id &#125;)</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> Axios.axios(&#123;</span><br><span class="line">    url,</span><br><span class="line">    method,</span><br><span class="line">    headers,</span><br><span class="line">    data,</span><br><span class="line">    params,</span><br><span class="line">  &#125;)</span><br><span class="line">    .then(<span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">      Axios.setRequestList(&#123; <span class="attr">el</span>: id, <span class="attr">remove</span>: <span class="literal">true</span> &#125;) <span class="comment">// 请求完成后，出队</span></span><br><span class="line">    &#125;)</span><br><span class="line">    .catch(<span class="function"><span class="params">error</span> =&gt;</span> &#123;</span><br><span class="line">      Axios.setRequestList(&#123; <span class="attr">el</span>: id, <span class="attr">remove</span>: <span class="literal">true</span> &#125;) <span class="comment">// 请求完成后，出队</span></span><br><span class="line">      <span class="keyword">if</span> (!silent) Axios.Toast(error.msg || error.message || error)</span><br><span class="line">    &#125;)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p><a href="https://github.com/Leo-July/axios" target="_blank" rel="noopener">git源码地址</a></p>
+<p><a href="https://www.kancloud.cn/yunye/axios/234845" target="_blank" rel="noopener">axios 中文使用文档</a></p>
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">标签</span><br>
+                
+    <a class="tag tag--primary tag--small t-link" href="/all-tags/vue/">vue</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/11/26/jsDom/" data-tooltip="jsDom is not a function" aria-label="上一篇: jsDom is not a function">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">上一篇</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/11/26/Hexo-browsersync/" data-tooltip="Hexo使用browsersync浏览器热更新" aria-label="下一篇: Hexo使用browsersync浏览器热更新">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">下一篇</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2018/11/26/axios/" title="分享到 Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2018/11/26/axios/" title="分享到 Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2018/11/26/axios/" title="分享到 Google+">
+                    <i class="fab fa-google-plus" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2018/11/26/axios/" title="分享到 Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2018/11/26/axios/&amp;title=axios 二次封装，带有静默模式" title="分享到 QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2018/11/26/axios/" title="分享到 Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+    </div>
+</article>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2021 Leo July. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/11/26/jsDom/" data-tooltip="jsDom is not a function" aria-label="上一篇: jsDom is not a function">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">上一篇</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/11/26/Hexo-browsersync/" data-tooltip="Hexo使用browsersync浏览器热更新" aria-label="下一篇: Hexo使用browsersync浏览器热更新">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">下一篇</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2018/11/26/axios/" title="分享到 Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2018/11/26/axios/" title="分享到 Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2018/11/26/axios/" title="分享到 Google+">
+                    <i class="fab fa-google-plus" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2018/11/26/axios/" title="分享到 Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2018/11/26/axios/&amp;title=axios 二次封装，带有静默模式" title="分享到 QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2018/11/26/axios/" title="分享到 Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+    <i id="btn-close-shareoptions" class="fa fa-times"></i>
+    <ul class="share-options">
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2018/11/26/axios/">
+                    <i class="fab fa-facebook" aria-hidden="true"></i><span>分享到 Facebook</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2018/11/26/axios/">
+                    <i class="fab fa-twitter" aria-hidden="true"></i><span>分享到 Twitter</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2018/11/26/axios/">
+                    <i class="fab fa-google-plus" aria-hidden="true"></i><span>分享到 Google+</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2018/11/26/axios/">
+                    <i class="fab fa-weibo" aria-hidden="true"></i><span>分享到 Weibo</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2018/11/26/axios/&amp;title=axios 二次封装，带有静默模式">
+                    <i class="fab fa-qq" aria-hidden="true"></i><span>分享到 QQ</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2018/11/26/axios/">
+                    <i class="fa fa-star" aria-hidden="true"></i><span>分享到 Qzone</span>
+                </a>
+            </li>
+        
+    </ul>
+</div>
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180" alt="作者的图片">
+        
+            <h4 id="about-card-name">Leo July</h4>
+        <!--  -->
+            <div id="about-card-bio">vue,weex,ES6,js,jq,html5,less,css3,git,webpack</div>
+        <!--  -->
+        <!--  -->
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br>
+                高级前端工程师
+            </div>
+        <!--  -->
+        
+    </div>
+</div>
+
+        
+            <div id="algolia-search-modal" class="modal-container">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="close-button"><i class="fa fa-times"></i></span>
+            <a href="https://algolia.com" target="_blank" rel="noopener" class="searchby-algolia text-color-light link-unstyled">
+                <span class="searchby-algolia-text text-color-light text-small">by</span>
+                <img class="searchby-algolia-logo" src="https://www.algolia.com/static_assets/images/press/downloads/algolia-light.svg">
+            </a>
+            <i class="search-icon fa fa-search"></i>
+            <form id="algolia-search-form">
+                <input type="text" id="algolia-search-input" name="search" class="form-control input--large search-input" placeholder="Search ">
+            </form>
+        </div>
+        <div class="modal-body">
+            <div class="no-result text-color-light text-center">没有找到文章</div>
+            <div class="results">
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/16/h5-video/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/01/16/h5-video/video.png" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/16/h5-video/">
+                            <h3 class="media-heading">h5 video移动端填坑记</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年1月16日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/22/vue-chat-room/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/01/22/vue-chat-room/timg.jpeg" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/22/vue-chat-room/">
+                            <h3 class="media-heading">vue 仿app聊天室</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年1月22日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/23/vue-barrage/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/01/23/vue-barrage/thumbnail.jpg" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/23/vue-barrage/">
+                            <h3 class="media-heading">vue 横屏滚动弹幕</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年1月23日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/02/23/wechat/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/02/23/wechat/show.jpg" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/02/23/wechat/">
+                            <h3 class="media-heading">微信小程序中遇到的坑和一些小技巧</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年2月23日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/js-curring/">
+                            <h3 class="media-heading">js-柯里化</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- clearReading: true
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York"
+comments: false -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/Hexo-browsersync/">
+                            <h3 class="media-heading">Hexo使用browsersync浏览器热更新</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/axios/">
+                            <h3 class="media-heading">axios 二次封装，带有静默模式</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!--
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/jsDom/">
+                            <h3 class="media-heading">jsDom is not a function</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/29/xcode-select/">
+                            <h3 class="media-heading">mac xcode-select 下载安装</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月29日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/29/ssh -T git-github-com/">
+                            <h3 class="media-heading">ssh -T git@github.com 出现Permission denied (publickey)</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月29日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+            </div>
+        </div>
+        <div class="modal-footer">
+            <p class="results-count text-medium" data-message-zero="没有找到文章" data-message-one="找到 1 篇文章" data-message-other="找到 {n} 篇文章">
+                找到 22 篇文章
+            </p>
+        </div>
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="/assets/js/script-vufjrm3fmbuttogo1hxuu0w9w0sesk5iyysjuguc2hdhufot9szxg8twijry.min.js"></script>
+<!--SCRIPTS END-->
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.14.1/moment-with-locales.min.js"></script>
+    <script src="//cdn.jsdelivr.net/algoliasearch/3/algoliasearch.min.js"></script>
+    <script>
+        var algoliaClient = algoliasearch('QDFOH7HV1P', '5132f23a0d2983147e805aa47a5df3e4');
+        var algoliaIndex = algoliaClient.initIndex('tranquilpeak');
+    </script>
+
+
+    </body>
+</html>

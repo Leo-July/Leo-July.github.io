@@ -1,0 +1,954 @@
+
+<!DOCTYPE html>
+<html lang="zh-cn">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="leo July&#39;s blog">
+    <title>uniapp 中使用fly - leo July&#39;s blog</title>
+    <meta name="author" content="Leo July">
+    
+        <meta name="keywords" content="uniapp,fly">
+    
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"},"articleBody":"\nflyio 帮助文档\n简介Fly.js 是一个基于 promise 的，轻量且强大的Javascript http 网络库，它有如下特点：\n\n提供统一的 Promise API。\n浏览器环境下，轻量且非常轻量 。\n支持多种JavaScript 运行环境\n支持请求／响应拦截器。\n自动转换 JSON 数据。\n支持切换底层 Http Engine，可轻松适配各种运行环境。\n浏览器端支持全局Ajax拦截 。\nH5页面内嵌到原生 APP 中时，支持将 http 请求转发到 Native。支持直接请求图片。\n\n安装使用NPM\n1npm install flyio\n使用CDN(浏览器中)\n1&lt;script src=&quot;https://unpkg.com/flyio/dist/fly.min.js&quot;&gt;&lt;/script&gt;\nUMD（浏览器中）\n1https://unpkg.com/flyio/dist/umd/fly.umd.min.js\n引入flyio不同JavaScript运行时的入口文件不同 ，请查看文档后面相应平台的引入方式，但在浏览器、Node、React Native中引入的方式是一样的，下面是不同平台下的引入的方式：\n\n浏览器、Node、React Native中引入\n 12var fly=require(&quot;flyio&quot;)\n 上面方式引入的是Fly的默认实例（浏览器、Node、React Native中相同），你也可以自己创建Fly实例：\n 12345var Fly=require(&quot;flyio/dist/npm/fly&quot;)var fly=new Fly;\n\n\n\n在微信小程序中引入\n 12var Fly=require(&quot;flyio/dist/npm/wx&quot;)var fly=new Fly\n 如果您的微信小程序项目没有使用npm来管理依赖，您可以直接下载源码到您的小程序工程，下载链接wx.js 或 wx.umd.min.js .下载任意一个，保存到本地工程目录，假设在“lib”目录，接下来引入：\n 12var Fly=require(&quot;../lib/wx&quot;) var fly=new Fly;\n\n\n\n快应用中引入\n快应用 中Fly依赖 fetch模块，需要先在 manifest.json中添加引用：\n1234&quot;features&quot;: [    ...  &#123;&quot;name&quot;: &quot;system.fetch&quot;&#125;]\n然后创建fly实例\n1234var fetch = require(&quot;@system.fetch&quot;)var Fly=require(&quot;flyio/dist/npm/hap&quot;)var fly=new Fly(fetch)\n\n\n\nWeex中引入\n12var Fly=require(&quot;flyio/dist/npm/weex&quot;)var fly=new Fly\n\n\n引入之后，您就可以对fly实例进行全局配置、添加拦截器、发起网络请求了。\n具体实现实例\n声明fly实例\n 123456789101112131415161718192021222324/** * Http** @export* @class Http*//* eslint-disable */export class Http &#123;  constructor() &#123;    let Fly = require('flyio') // https://wendux.github.io/dist/#/doc/flyio/readme    // #ifdef MP-WEIXIN    Fly = require('flyio/dist/npm/wx') // https://wendux.github.io/dist/#/doc/flyio/readme    // #endif    this.instance = new Fly()    this.instance.config= &#123;      baseURL: process.env.VUE_APP_API // 环境变量中定义的api域名      'Content-Type': 'application/json;charset=UTF-8',    &#125;  &#125;&#125;\n\n拦截器配置 请求拦截器\n 12345678910111213141516171819// #region 请求拦截器requestUse () &#123;  this.instance.interceptors.request.use(    request =&gt; &#123;      request.headers = &#123;        'zpinno-boleuid': store.state.boleUid, // 必传参数放在headers 实现        ...request.headers      &#125;      console.info(`🔊 [请求拦截器]  -&gt; $&#123;request.url&#125;`, request, 'request')      return request    &#125;,    error =&gt; &#123;      console.error('🔊 [请求拦截器] -&gt; error', error)      return Promise.resolve(error)    &#125;  )&#125;// #endregion\n region 响应拦截器\n 123456789101112131415161718192021222324252627282930313233// #region 响应拦截器responseUse () &#123;  this.instance.interceptors.response.use(    response =&gt; &#123;      console.info(`🔊 [响应拦截器] -&gt; $&#123;response.request.url&#125;`, response)      return Promise.resolve(response.data)    &#125;,    error =&gt; &#123;      console.info(`🔊 [响应拦截器] -&gt; error -&gt; $&#123;error.request.url&#125;`, error)      // #region response status: 请求已发出，但是不在2xx的范围      const statusCode = &#123;        404: '404,错误请求',        401: '未授权',        403: '禁止访问',        408: '请求超时',        500: '服务器内部错误',        501: '功能未实现',        502: '服务不可用',        503: '服务不可用',        504: '网关错误',        510: '服务器内部错误'      &#125;      // #endregion      // TODO 处理断网的情况      const statusMessage = statusCode[~~error.response.status]      return Promise.reject(statusMessage ? new Error(statusMessage) : error)    &#125;  )&#125;// #endregion\n 引用拦截器\n 12345678export class Http &#123;  constructor() &#123;    ...    this.requestUse()    this.responseUse()  &#125;&#125;\n\n实现请求队列loading或者静默请求 首先定义队列属性\n 123456export class Http &#123;constructor() &#123;  ...  this._requestList = [] // 请求队列&#125;\n 通过get set 实现监听requestList\n 123456789101112131415161718 // #region 请求队列 get  setget requestList () &#123;  return this._requestList&#125;set requestList (list) &#123;  this._requestList = list // 设置请求队列  if (this._requestList.length === 0) &#123;    // 如果请求队列为空了，就关闭loading    uni.hideLoading()  &#125; else &#123;    // 反知显示loading    uni.showLoading(&#123;      title: '加载中'    &#125;)  &#125;&#125;// #endregion\n 入队出队方法\n 12345678910/*** * @param &#123;String&#125; id  \b请求队列入队或出队的id* @param &#123;Boolean&#125; remove  true: 出队   false: 默认  进队*/setRequestList (&#123; id = '', remove = false &#125; = &#123;&#125;) &#123;  const array = [...this._requestList]  remove ? array.splice(array.indexOf(id), 1) : array.push(id)  this.requestList = array&#125;\n\n单例请求实现\n12345678910111213141516171819202122232425262728293031323334  export const http = new Http()  // #region 单例请求接口    /**    *     * @param &#123;String&#125; url  \b请求url    * @param &#123;Object&#125; data 请求参数    * @param &#123;Object&#125; options 请求参数    * @param &#123;Boolean&#125; silent  true: 静默   false: loading    * @param &#123;Object&#125; options 配置    */  export default function request (url = '', data = &#123;&#125;, silent = false, options = &#123;&#125;) &#123;      const id = `$&#123;url&#125;TIME$&#123;new Date().getTime()&#125;` // 生成id      !silent &amp;&amp; http.setRequestList(&#123; id &#125;)            return new Promise((resolve, reject) =&gt; &#123;        http.instance          .request(url, data, &#123;            method: 'get',            ...options          &#125;)          .then(res =&gt; &#123;            http.setRequestList(&#123; el: id, remove: true &#125;) // 请求完成后，出队            resolve(res)          &#125;)          .catch(error =&gt; &#123;            http.setRequestList(&#123; el: id, remove: true &#125;) // 请求完成后，出队            reject(error)          &#125;)      &#125;)    &#125;,// #endregion\n参数对象方式传入\n123456789101112...    /**    *     * @param &#123;String&#125; url  \b请求url    * @param &#123;Object&#125; data 请求参数    * @param &#123;Object&#125; options 请求参数    * @param &#123;Boolean&#125; silent  true: 静默   false: loading    * @param &#123;Object&#125; options 配置    */  export default function request (&#123;url = '', data = &#123;&#125;, silent = false, options = &#123;&#125;&#125;=&#123;&#125;) &#123;...  &#125;\n\n接口同步处理小程序中，一般会存在进入小程后必须先请求一个接口，请求其他接口时使用其返回的数据。此时我们可以用的拦截器锁定API\n\n拦截器锁定API请求拦截器和响应拦截器都提供了锁定自身的API， 拦截器锁定后，未进入到该拦截器的请求将在拦截器外面排队，暂停网络请求，直到拦截器解锁时，排队的请求才再次进入拦截器继续请求。请求拦截器和响应拦截器都提供了如下两个API:lock()锁定当前拦截器是。unlock解锁当前拦截器。\n\n12345678910111213141516171819202122232425import &#123; http, Http &#125; from '@/utils/http'  async wxDecrypt(&#123; state, commit &#125;) &#123;        http.instance.lock() //锁定当前拦截器是。        const authHttp = new Http()        uni.login(&#123;          provider: 'weixin',          //获取code 使用wx.login得到的登陆凭证，用于换取openid          success: async resLogin =&gt; &#123;            const res = await authHttp.instance.post(url, &#123;              jsCode: resLogin.code,              appletName: appletName,              parentSignature: state.parentSignature,              shareId: state.globalScene            &#125;)            // 更新headers配置            http.instance.config.headers = &#123;              ...http.instance.config.headers,              'uid': res.data.Uid            &#125;            http.instance.unlock() //解锁当前拦截器。          &#125;        &#125;)      &#125;,\n\n\n使用示例 12345 import request from '@/utils/http'request(&#123; url: url, data: data, silent: silent, options: options &#125;)request( url, data, silent, options )","dateCreated":"2019-12-11T16:53:08+08:00","dateModified":"2019-12-13T13:20:54+08:00","datePublished":"2019-12-11T16:53:08+08:00","description":"\n","headline":"uniapp 中使用fly","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://leo-july.github.io/2019/12/11/uniapp-中使用fly/"},"publisher":{"@type":"Organization","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180","logo":{"@type":"ImageObject","url":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"}},"url":"https://leo-july.github.io/2019/12/11/uniapp-中使用fly/","keywords":"fly.js, uniapp"}</script>
+    <meta name="keywords" content="uniapp,fly">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="uniapp 中使用fly">
+<meta property="og:url" content="https://leo-july.github.io/2019/12/11/uniapp-中使用fly/index.html">
+<meta property="og:site_name" content="leo July&#39;s blog">
+<meta property="og:locale" content="zh-cn">
+<meta property="og:updated_time" content="2019-12-13T05:20:54.169Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="uniapp 中使用fly">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"/>
+    
+    
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="/assets/css/style-du2xmrqdqrl2ollgeiw050kpl6l4nbyz7bumjuurjgsxyopifvukebxc9lqe.min.css">
+    <!--STYLES END-->
+    
+
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">leo July&#39;s blog</a>
+    </div>
+    
+        
+            <a class="header-right-icon open-algolia-search" href="#search">
+        
+        
+            <i class="search fa-lg"></i>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180" alt="作者的图片">
+                </a>
+                <h4 class="sidebar-profile-name">Leo July</h4>
+                <!--  -->
+                    <h5 class="sidebar-profile-bio">vue,weex,ES6,js,jq,html5,less,css3,git,webpack</h5>
+                <!--  -->
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/ " title="首页">
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">首页</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-categories" title="分类">
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">分类</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-tags" title="标签">
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">标签</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-archives" title="归档">
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">归档</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link open-algolia-search" href="#search" title="搜索">
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">搜索</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="#about" title="关于">
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">关于</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://github.com/Leo-July" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="mailto:15563861385@163.com" target="_blank" rel="noopener" title="Emial">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Emial</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://xuebin.me" target="_blank" rel="noopener" title="xuebin.me">
+                    
+                        <i class="sidebar-button-icon fa fa-link" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">xuebin.me</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://zhangmiao.cc/" target="_blank" rel="noopener" title="zhangmiao.cc">
+                    
+                        <i class="sidebar-button-icon fa fa-link" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">zhangmiao.cc</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+            <div id="main" data-behavior="4"
+                 class="
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+        <div class="post-header main-content-wrap text-left">
+    
+        <h1 class="post-title">
+            uniapp 中使用fly
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2019-12-11T16:53:08+08:00">
+	
+		    12月 11, 2019
+    	
+    </time>
+    
+        <span>发布在 </span>
+        
+    <a class="category-link" href="/all-categories/js/">js</a>
+
+
+    
+</div>
+
+    
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<p><a href="https://wendux.github.io/dist/#/doc/flyio/readme" target="_blank" rel="noopener">flyio 帮助文档</a></p>
+<h2 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h2><p>Fly.js 是一个基于 promise 的，轻量且强大的Javascript http 网络库，它有如下特点：</p>
+<ol>
+<li>提供统一的 Promise API。</li>
+<li>浏览器环境下，<strong>轻量且非常轻量</strong> 。</li>
+<li>支持多种JavaScript 运行环境</li>
+<li>支持请求／响应拦截器。</li>
+<li>自动转换 JSON 数据。</li>
+<li><strong>支持切换底层 Http Engine，可轻松适配各种运行环境</strong>。</li>
+<li><strong>浏览器端支持全局Ajax拦截 。</strong></li>
+<li><strong>H5页面内嵌到原生 APP 中时，支持将 http 请求转发到 Native。支持直接请求图片</strong>。</li>
+</ol>
+<h2 id="安装"><a href="#安装" class="headerlink" title="安装"></a>安装</h2><p>使用NPM</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">npm install flyio</span><br></pre></td></tr></table></figure>
+<p>使用CDN(浏览器中)</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&lt;script src=&quot;https://unpkg.com/flyio/dist/fly.min.js&quot;&gt;&lt;/script&gt;</span><br></pre></td></tr></table></figure>
+<p>UMD（浏览器中）</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">https://unpkg.com/flyio/dist/umd/fly.umd.min.js</span><br></pre></td></tr></table></figure>
+<h2 id="引入flyio"><a href="#引入flyio" class="headerlink" title="引入flyio"></a>引入flyio</h2><p><strong>不同JavaScript运行时的入口文件不同</strong> ，请查看文档后面相应平台的引入方式，但在浏览器、Node、React Native中引入的方式是一样的，下面是不同平台下的引入的方式：</p>
+<ol>
+<li><p>浏览器、Node、React Native中引入</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">var fly=require(&quot;flyio&quot;)</span><br></pre></td></tr></table></figure>
+<p> 上面方式引入的是Fly的默认实例（浏览器、Node、React Native中相同），你也可以自己创建Fly实例：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">var Fly=require(&quot;flyio/dist/npm/fly&quot;)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">var fly=new Fly;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<ol start="2">
+<li><p>在微信小程序中引入</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">var Fly=require(&quot;flyio/dist/npm/wx&quot;)</span><br><span class="line">var fly=new Fly</span><br></pre></td></tr></table></figure>
+<p> 如果您的微信小程序项目没有使用<code>npm</code>来管理依赖，您可以直接下载源码到您的小程序工程，下载链接<a href="https://github.com/wendux/fly/tree/master/dist/npm/wx.js" target="_blank" rel="noopener">wx.js</a> 或 <a href="https://github.com/wendux/fly/tree/master/dist/umd/wx.umd.min.js" target="_blank" rel="noopener">wx.umd.min.js</a> .下载任意一个，保存到本地工程目录，假设在“lib”目录，接下来引入：</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">var Fly=require(&quot;../lib/wx&quot;) </span><br><span class="line">var fly=new Fly;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<ol start="3">
+<li><p>快应用中引入</p>
+<p><a href="https://www.quickapp.cn/" target="_blank" rel="noopener">快应用</a> 中Fly依赖 <code>fetch</code>模块，需要先在 <code>manifest.json</code>中添加引用：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&quot;features&quot;: [</span><br><span class="line">    ...</span><br><span class="line">  &#123;&quot;name&quot;: &quot;system.fetch&quot;&#125;</span><br><span class="line">]</span><br></pre></td></tr></table></figure>
+<p>然后创建fly实例</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">var fetch = require(&quot;@system.fetch&quot;)</span><br><span class="line">var Fly=require(&quot;flyio/dist/npm/hap&quot;)</span><br><span class="line">var fly=new Fly(fetch)</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<ol start="4">
+<li><p>Weex中引入</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">var Fly=require(&quot;flyio/dist/npm/weex&quot;)</span><br><span class="line">var fly=new Fly</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>引入之后，您就可以对fly实例进行全局配置、添加拦截器、发起网络请求了。</p>
+<h2 id="具体实现实例"><a href="#具体实现实例" class="headerlink" title="具体实现实例"></a>具体实现实例</h2><ol>
+<li><p>声明fly实例</p>
+ <figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * Http</span></span><br><span class="line"><span class="comment">*</span></span><br><span class="line"><span class="comment">* @export</span></span><br><span class="line"><span class="comment">* @class Http</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* eslint-disable */</span></span><br><span class="line"><span class="keyword">export</span> <span class="class"><span class="keyword">class</span> <span class="title">Http</span> </span>&#123;</span><br><span class="line">  <span class="keyword">constructor</span>() &#123;</span><br><span class="line">    <span class="keyword">let</span> Fly = <span class="built_in">require</span>(<span class="string">'flyio'</span>) <span class="comment">// https://wendux.github.io/dist/#/doc/flyio/readme</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// #ifdef MP-WEIXIN</span></span><br><span class="line">    Fly = <span class="built_in">require</span>(<span class="string">'flyio/dist/npm/wx'</span>) <span class="comment">// https://wendux.github.io/dist/#/doc/flyio/readme</span></span><br><span class="line">    <span class="comment">// #endif</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">this</span>.instance = <span class="keyword">new</span> Fly()</span><br><span class="line"></span><br><span class="line">    <span class="keyword">this</span>.instance.config= &#123;</span><br><span class="line">      baseURL: process.env.VUE_APP_API <span class="comment">// 环境变量中定义的api域名</span></span><br><span class="line">      <span class="string">'Content-Type'</span>: <span class="string">'application/json;charset=UTF-8'</span>,</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>拦截器配置<br> 请求拦截器</p>
+ <figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">// #region 请求拦截器</span></span><br><span class="line">requestUse () &#123;</span><br><span class="line">  <span class="keyword">this</span>.instance.interceptors.request.use(</span><br><span class="line">    request =&gt; &#123;</span><br><span class="line">      request.headers = &#123;</span><br><span class="line">        <span class="string">'zpinno-boleuid'</span>: store.state.boleUid, <span class="comment">// 必传参数放在headers 实现</span></span><br><span class="line">        ...request.headers</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="built_in">console</span>.info(<span class="string">`🔊 [请求拦截器]  -&gt; <span class="subst">$&#123;request.url&#125;</span>`</span>, request, <span class="string">'request'</span>)</span><br><span class="line">      <span class="keyword">return</span> request</span><br><span class="line">    &#125;,</span><br><span class="line">    error =&gt; &#123;</span><br><span class="line">      <span class="built_in">console</span>.error(<span class="string">'🔊 [请求拦截器] -&gt; error'</span>, error)</span><br><span class="line">      <span class="keyword">return</span> <span class="built_in">Promise</span>.resolve(error)</span><br><span class="line">    &#125;</span><br><span class="line">  )</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// #endregion</span></span><br></pre></td></tr></table></figure>
+<p> region 响应拦截器</p>
+ <figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// #region 响应拦截器</span></span><br><span class="line">responseUse () &#123;</span><br><span class="line">  <span class="keyword">this</span>.instance.interceptors.response.use(</span><br><span class="line">    response =&gt; &#123;</span><br><span class="line">      <span class="built_in">console</span>.info(<span class="string">`🔊 [响应拦截器] -&gt; <span class="subst">$&#123;response.request.url&#125;</span>`</span>, response)</span><br><span class="line">      <span class="keyword">return</span> <span class="built_in">Promise</span>.resolve(response.data)</span><br><span class="line">    &#125;,</span><br><span class="line">    error =&gt; &#123;</span><br><span class="line">      <span class="built_in">console</span>.info(<span class="string">`🔊 [响应拦截器] -&gt; error -&gt; <span class="subst">$&#123;error.request.url&#125;</span>`</span>, error)</span><br><span class="line"></span><br><span class="line">      <span class="comment">// #region response status: 请求已发出，但是不在2xx的范围</span></span><br><span class="line">      <span class="keyword">const</span> statusCode = &#123;</span><br><span class="line">        <span class="number">404</span>: <span class="string">'404,错误请求'</span>,</span><br><span class="line">        <span class="number">401</span>: <span class="string">'未授权'</span>,</span><br><span class="line">        <span class="number">403</span>: <span class="string">'禁止访问'</span>,</span><br><span class="line">        <span class="number">408</span>: <span class="string">'请求超时'</span>,</span><br><span class="line">        <span class="number">500</span>: <span class="string">'服务器内部错误'</span>,</span><br><span class="line">        <span class="number">501</span>: <span class="string">'功能未实现'</span>,</span><br><span class="line">        <span class="number">502</span>: <span class="string">'服务不可用'</span>,</span><br><span class="line">        <span class="number">503</span>: <span class="string">'服务不可用'</span>,</span><br><span class="line">        <span class="number">504</span>: <span class="string">'网关错误'</span>,</span><br><span class="line">        <span class="number">510</span>: <span class="string">'服务器内部错误'</span></span><br><span class="line">      &#125;</span><br><span class="line">      <span class="comment">// #endregion</span></span><br><span class="line"></span><br><span class="line">      <span class="comment">// TODO 处理断网的情况</span></span><br><span class="line"></span><br><span class="line">      <span class="keyword">const</span> statusMessage = statusCode[~~error.response.status]</span><br><span class="line">      <span class="keyword">return</span> <span class="built_in">Promise</span>.reject(statusMessage ? <span class="keyword">new</span> <span class="built_in">Error</span>(statusMessage) : error)</span><br><span class="line">    &#125;</span><br><span class="line">  )</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// #endregion</span></span><br></pre></td></tr></table></figure>
+<p> 引用拦截器</p>
+ <figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">export</span> <span class="class"><span class="keyword">class</span> <span class="title">Http</span> </span>&#123;</span><br><span class="line">  <span class="keyword">constructor</span>() &#123;</span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    <span class="keyword">this</span>.requestUse()</span><br><span class="line">    <span class="keyword">this</span>.responseUse()</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>实现请求队列<code>loading</code>或者静默请求<br> 首先定义队列属性</p>
+ <figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">export</span> <span class="class"><span class="keyword">class</span> <span class="title">Http</span> </span>&#123;</span><br><span class="line"><span class="keyword">constructor</span>() &#123;</span><br><span class="line">  ...</span><br><span class="line"></span><br><span class="line">  <span class="keyword">this</span>._requestList = [] <span class="comment">// 请求队列</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p> 通过get set 实现监听requestList</p>
+ <figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"> <span class="comment">// #region 请求队列 get  set</span></span><br><span class="line">get requestList () &#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="keyword">this</span>._requestList</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">set requestList (list) &#123;</span><br><span class="line">  <span class="keyword">this</span>._requestList = list <span class="comment">// 设置请求队列</span></span><br><span class="line">  <span class="keyword">if</span> (<span class="keyword">this</span>._requestList.length === <span class="number">0</span>) &#123;</span><br><span class="line">    <span class="comment">// 如果请求队列为空了，就关闭loading</span></span><br><span class="line">    uni.hideLoading()</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="comment">// 反知显示loading</span></span><br><span class="line">    uni.showLoading(&#123;</span><br><span class="line">      title: <span class="string">'加载中'</span></span><br><span class="line">    &#125;)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// #endregion</span></span><br></pre></td></tr></table></figure>
+<p> 入队出队方法</p>
+ <figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">* </span></span><br><span class="line"><span class="comment">* @param &#123;String&#125; id  请求队列入队或出队的id</span></span><br><span class="line"><span class="comment">* @param &#123;Boolean&#125; remove  true: 出队   false: 默认  进队</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line">setRequestList (&#123; id = <span class="string">''</span>, remove = <span class="literal">false</span> &#125; = &#123;&#125;) &#123;</span><br><span class="line">  <span class="keyword">const</span> array = [...this._requestList]</span><br><span class="line">  remove ? array.splice(array.indexOf(id), <span class="number">1</span>) : array.push(id)</span><br><span class="line">  <span class="keyword">this</span>.requestList = array</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>单例请求实现</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">  <span class="keyword">export</span> <span class="keyword">const</span> http = <span class="keyword">new</span> Http()</span><br><span class="line">  <span class="comment">// #region 单例请求接口</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">    * </span></span><br><span class="line"><span class="comment">    * @param &#123;String&#125; url  请求url</span></span><br><span class="line"><span class="comment">    * @param &#123;Object&#125; data 请求参数</span></span><br><span class="line"><span class="comment">    * @param &#123;Object&#125; options 请求参数</span></span><br><span class="line"><span class="comment">    * @param &#123;Boolean&#125; silent  true: 静默   false: loading</span></span><br><span class="line"><span class="comment">    * @param &#123;Object&#125; options 配置</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">  <span class="keyword">export</span> <span class="keyword">default</span> <span class="function"><span class="keyword">function</span> <span class="title">request</span> (<span class="params">url = <span class="string">''</span>, data = &#123;&#125;, silent = false, options = &#123;&#125;</span>) </span>&#123;</span><br><span class="line">      <span class="keyword">const</span> id = <span class="string">`<span class="subst">$&#123;url&#125;</span>TIME<span class="subst">$&#123;<span class="keyword">new</span> <span class="built_in">Date</span>().getTime()&#125;</span>`</span> <span class="comment">// 生成id</span></span><br><span class="line"></span><br><span class="line">      !silent &amp;&amp; http.setRequestList(&#123; id &#125;)</span><br><span class="line">      </span><br><span class="line">      <span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Promise</span>(<span class="function">(<span class="params">resolve, reject</span>) =&gt;</span> &#123;</span><br><span class="line">        http.instance</span><br><span class="line">          .request(url, data, &#123;</span><br><span class="line">            method: <span class="string">'get'</span>,</span><br><span class="line">            ...options</span><br><span class="line">          &#125;)</span><br><span class="line">          .then(<span class="function"><span class="params">res</span> =&gt;</span> &#123;</span><br><span class="line">            http.setRequestList(&#123; <span class="attr">el</span>: id, <span class="attr">remove</span>: <span class="literal">true</span> &#125;) <span class="comment">// 请求完成后，出队</span></span><br><span class="line">            resolve(res)</span><br><span class="line">          &#125;)</span><br><span class="line">          .catch(<span class="function"><span class="params">error</span> =&gt;</span> &#123;</span><br><span class="line">            http.setRequestList(&#123; <span class="attr">el</span>: id, <span class="attr">remove</span>: <span class="literal">true</span> &#125;) <span class="comment">// 请求完成后，出队</span></span><br><span class="line">            reject(error)</span><br><span class="line">          &#125;)</span><br><span class="line">      &#125;)</span><br><span class="line">    &#125;,</span><br><span class="line"></span><br><span class="line"><span class="comment">// #endregion</span></span><br></pre></td></tr></table></figure>
+<p>参数对象方式传入</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">...</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">    * </span></span><br><span class="line"><span class="comment">    * @param &#123;String&#125; url  请求url</span></span><br><span class="line"><span class="comment">    * @param &#123;Object&#125; data 请求参数</span></span><br><span class="line"><span class="comment">    * @param &#123;Object&#125; options 请求参数</span></span><br><span class="line"><span class="comment">    * @param &#123;Boolean&#125; silent  true: 静默   false: loading</span></span><br><span class="line"><span class="comment">    * @param &#123;Object&#125; options 配置</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">  <span class="keyword">export</span> <span class="keyword">default</span> <span class="function"><span class="keyword">function</span> <span class="title">request</span> (<span class="params">&#123;url = <span class="string">''</span>, data = &#123;&#125;, silent = false, options = &#123;&#125;&#125;=&#123;&#125;</span>) </span>&#123;</span><br><span class="line">...</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>接口同步处理<br>小程序中，一般会存在进入小程后必须先请求一个接口，请求其他接口时使用其返回的数据。此时我们可以用的<em>拦截器锁定API</em></p>
+<blockquote>
+<p>拦截器锁定API<br>请求拦截器和响应拦截器都提供了锁定自身的API， 拦截器锁定后，未进入到该拦截器的请求将在拦截器外面排队，暂停网络请求，直到拦截器解锁时，排队的请求才再次进入拦截器继续请求。请求拦截器和响应拦截器都提供了如下两个API:<br>lock()<br>锁定当前拦截器是。<br>unlock<br>解锁当前拦截器。</p>
+</blockquote>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> &#123; http, Http &#125; <span class="keyword">from</span> <span class="string">'@/utils/http'</span></span><br><span class="line"></span><br><span class="line">  <span class="keyword">async</span> wxDecrypt(&#123; state, commit &#125;) &#123;</span><br><span class="line">        http.instance.lock() <span class="comment">//锁定当前拦截器是。</span></span><br><span class="line">        <span class="keyword">const</span> authHttp = <span class="keyword">new</span> Http()</span><br><span class="line">        uni.login(&#123;</span><br><span class="line">          provider: <span class="string">'weixin'</span>,</span><br><span class="line">          <span class="comment">//获取code 使用wx.login得到的登陆凭证，用于换取openid</span></span><br><span class="line">          success: <span class="keyword">async</span> resLogin =&gt; &#123;</span><br><span class="line">            <span class="keyword">const</span> res = <span class="keyword">await</span> authHttp.instance.post(url, &#123;</span><br><span class="line">              jsCode: resLogin.code,</span><br><span class="line">              appletName: appletName,</span><br><span class="line">              parentSignature: state.parentSignature,</span><br><span class="line">              shareId: state.globalScene</span><br><span class="line">            &#125;)</span><br><span class="line">            <span class="comment">// 更新headers配置</span></span><br><span class="line">            http.instance.config.headers = &#123;</span><br><span class="line">              ...http.instance.config.headers,</span><br><span class="line">              <span class="string">'uid'</span>: res.data.Uid</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            http.instance.unlock() <span class="comment">//解锁当前拦截器。</span></span><br><span class="line">          &#125;</span><br><span class="line">        &#125;)</span><br><span class="line">      &#125;,</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<h2 id="使用示例"><a href="#使用示例" class="headerlink" title="使用示例"></a>使用示例</h2> <figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"> <span class="keyword">import</span> request <span class="keyword">from</span> <span class="string">'@/utils/http'</span></span><br><span class="line"></span><br><span class="line">request(&#123; <span class="attr">url</span>: url, <span class="attr">data</span>: data, <span class="attr">silent</span>: silent, <span class="attr">options</span>: options &#125;)</span><br><span class="line"></span><br><span class="line">request( url, data, silent, options )</span><br></pre></td></tr></table></figure>
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">标签</span><br>
+                
+    <a class="tag tag--primary tag--small t-link" href="/all-tags/fly-js/">fly.js</a> <a class="tag tag--primary tag--small t-link" href="/all-tags/uniapp/">uniapp</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2020/02/26/好用的网站/" data-tooltip="好用的网站" aria-label="上一篇: 好用的网站">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">上一篇</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/12/11/heades-值不能带有下划线/" data-tooltip="heades 值不能带有下划线" aria-label="下一篇: heades 值不能带有下划线">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">下一篇</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2019/12/11/uniapp-中使用fly/" title="分享到 Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2019/12/11/uniapp-中使用fly/" title="分享到 Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2019/12/11/uniapp-中使用fly/" title="分享到 Google+">
+                    <i class="fab fa-google-plus" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2019/12/11/uniapp-中使用fly/" title="分享到 Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2019/12/11/uniapp-中使用fly/&amp;title=uniapp 中使用fly" title="分享到 QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2019/12/11/uniapp-中使用fly/" title="分享到 Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+    </div>
+</article>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2021 Leo July. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2020/02/26/好用的网站/" data-tooltip="好用的网站" aria-label="上一篇: 好用的网站">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">上一篇</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/12/11/heades-值不能带有下划线/" data-tooltip="heades 值不能带有下划线" aria-label="下一篇: heades 值不能带有下划线">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">下一篇</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2019/12/11/uniapp-中使用fly/" title="分享到 Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2019/12/11/uniapp-中使用fly/" title="分享到 Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2019/12/11/uniapp-中使用fly/" title="分享到 Google+">
+                    <i class="fab fa-google-plus" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2019/12/11/uniapp-中使用fly/" title="分享到 Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2019/12/11/uniapp-中使用fly/&amp;title=uniapp 中使用fly" title="分享到 QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2019/12/11/uniapp-中使用fly/" title="分享到 Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+    <i id="btn-close-shareoptions" class="fa fa-times"></i>
+    <ul class="share-options">
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2019/12/11/uniapp-中使用fly/">
+                    <i class="fab fa-facebook" aria-hidden="true"></i><span>分享到 Facebook</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2019/12/11/uniapp-中使用fly/">
+                    <i class="fab fa-twitter" aria-hidden="true"></i><span>分享到 Twitter</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2019/12/11/uniapp-中使用fly/">
+                    <i class="fab fa-google-plus" aria-hidden="true"></i><span>分享到 Google+</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2019/12/11/uniapp-中使用fly/">
+                    <i class="fab fa-weibo" aria-hidden="true"></i><span>分享到 Weibo</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2019/12/11/uniapp-中使用fly/&amp;title=uniapp 中使用fly">
+                    <i class="fab fa-qq" aria-hidden="true"></i><span>分享到 QQ</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2019/12/11/uniapp-中使用fly/">
+                    <i class="fa fa-star" aria-hidden="true"></i><span>分享到 Qzone</span>
+                </a>
+            </li>
+        
+    </ul>
+</div>
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180" alt="作者的图片">
+        
+            <h4 id="about-card-name">Leo July</h4>
+        <!--  -->
+            <div id="about-card-bio">vue,weex,ES6,js,jq,html5,less,css3,git,webpack</div>
+        <!--  -->
+        <!--  -->
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br>
+                高级前端工程师
+            </div>
+        <!--  -->
+        
+    </div>
+</div>
+
+        
+            <div id="algolia-search-modal" class="modal-container">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="close-button"><i class="fa fa-times"></i></span>
+            <a href="https://algolia.com" target="_blank" rel="noopener" class="searchby-algolia text-color-light link-unstyled">
+                <span class="searchby-algolia-text text-color-light text-small">by</span>
+                <img class="searchby-algolia-logo" src="https://www.algolia.com/static_assets/images/press/downloads/algolia-light.svg">
+            </a>
+            <i class="search-icon fa fa-search"></i>
+            <form id="algolia-search-form">
+                <input type="text" id="algolia-search-input" name="search" class="form-control input--large search-input" placeholder="Search ">
+            </form>
+        </div>
+        <div class="modal-body">
+            <div class="no-result text-color-light text-center">没有找到文章</div>
+            <div class="results">
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/16/h5-video/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/01/16/h5-video/video.png" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/16/h5-video/">
+                            <h3 class="media-heading">h5 video移动端填坑记</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年1月16日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/22/vue-chat-room/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/01/22/vue-chat-room/timg.jpeg" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/22/vue-chat-room/">
+                            <h3 class="media-heading">vue 仿app聊天室</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年1月22日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/23/vue-barrage/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/01/23/vue-barrage/thumbnail.jpg" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/23/vue-barrage/">
+                            <h3 class="media-heading">vue 横屏滚动弹幕</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年1月23日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/02/23/wechat/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/02/23/wechat/show.jpg" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/02/23/wechat/">
+                            <h3 class="media-heading">微信小程序中遇到的坑和一些小技巧</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年2月23日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/js-curring/">
+                            <h3 class="media-heading">js-柯里化</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- clearReading: true
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York"
+comments: false -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/Hexo-browsersync/">
+                            <h3 class="media-heading">Hexo使用browsersync浏览器热更新</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/axios/">
+                            <h3 class="media-heading">axios 二次封装，带有静默模式</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!--
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/jsDom/">
+                            <h3 class="media-heading">jsDom is not a function</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/29/xcode-select/">
+                            <h3 class="media-heading">mac xcode-select 下载安装</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月29日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/29/ssh -T git-github-com/">
+                            <h3 class="media-heading">ssh -T git@github.com 出现Permission denied (publickey)</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月29日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+            </div>
+        </div>
+        <div class="modal-footer">
+            <p class="results-count text-medium" data-message-zero="没有找到文章" data-message-one="找到 1 篇文章" data-message-other="找到 {n} 篇文章">
+                找到 22 篇文章
+            </p>
+        </div>
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="/assets/js/script-vufjrm3fmbuttogo1hxuu0w9w0sesk5iyysjuguc2hdhufot9szxg8twijry.min.js"></script>
+<!--SCRIPTS END-->
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.14.1/moment-with-locales.min.js"></script>
+    <script src="//cdn.jsdelivr.net/algoliasearch/3/algoliasearch.min.js"></script>
+    <script>
+        var algoliaClient = algoliasearch('QDFOH7HV1P', '5132f23a0d2983147e805aa47a5df3e4');
+        var algoliaIndex = algoliaClient.initIndex('tranquilpeak');
+    </script>
+
+
+    </body>
+</html>

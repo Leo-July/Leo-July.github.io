@@ -1,0 +1,896 @@
+
+<!DOCTYPE html>
+<html lang="zh-cn">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="leo July&#39;s blog">
+    <title>小程序使用canvas合成分享海报 - leo July&#39;s blog</title>
+    <meta name="author" content="Leo July">
+    
+        <meta name="keywords" content="canvas,合成海报,微信小程序">
+    
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"},"articleBody":"\n\n\n\n我使用的是 mpvue 开发小程序\n\n遇到的坑\ncanvas.drawImage`image 资源必须是本地,所以需要把背景图片，先wx.downloadFile`本地\ncanvas.drawImage`image 资源不能是base64,所以需要把后台返回的base64`二维码转成图片并存在本地\ncanvas 在小程序里必须加canvas-id=&quot;myCanvas&quot;属性，否则会display:none\n如果保存海报到相册授权取消，再次调用wx.saveImageToPhotosAlbum是不弹出授权框，只能使用button open-type=&quot;openType&quot;跳到授权设置页面。\n\nhtml1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950515253545556575859&lt;template&gt;  &lt;div v-if=\"value\" class=\"poster\"&gt;    &lt;div class=\"poster-wrap\"&gt;      &lt;image :src=\"bg\" alt=\"\" mode=\"widthFix\" class=\"poster-bg\" /&gt;      &lt;image :src=\"codeImg\" class=\"poster-code\" /&gt;    &lt;/div&gt;    &lt;canvas class=\"canvas\" canvas-id=\"myCanvas\" style=\"width: 300px;height: 495px\"&gt; &lt;/canvas&gt;    &lt;button class=\"btn\" :open-type=\"openType\" @opensetting=\"openSetting\" @click=\"btnTap\"&gt;&#123;&#123;btnText&#125;&#125;&lt;/button&gt;  &lt;/div&gt;&lt;/template&gt;&lt;style lang=\"scss\" scoped&gt;  .poster &#123;    display: flex;    flex-direction: column;    position: fixed;    top: 0;    right: 0;    bottom: 0;    left: 0;    background-color: rgba(0, 0, 0, 0.6);    z-index: 10;  &#125;  .canvas &#123;    z-index: -1;    position: absolute;    left: 50%;    top: 45rpx;    transform: translateX(-50%);  &#125;  .poster-wrap &#123;    position: relative;    margin: 45rpx 75rpx;    width: 600rpx;    height: 989rpx;  &#125;  .poster-code &#123;    position: absolute;    left: 50%;    bottom: 229rpx;    width: 200rpx;    height: 200rpx;    transform: translateX(-50%);  &#125;  .btn &#123;    position: fixed;    right: 0;    bottom: 0;    left: 0;    height: 104rpx;    font-size: 32rpx;    font-weight: 400;    text-align: center;    color: rgba(255, 255, 255, 1);    line-height: 104rpx;    background: rgba(26, 138, 250, 1);  &#125;&lt;/style&gt;\njs123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899100101102103104105106107108109110111112113114115116117118119120121122123124125126127128129130131132133134135136137138139140141142143144145146147148149150151152153154155156157158159160&lt;script&gt;import &#123;base64src&#125; from '../util'export default &#123;  name: 'Poster',  props: &#123;    value: &#123;      type: Boolean,      default: false    &#125;  &#125;,  data () &#123;    return &#123;      bg: 'https://img09.zhaopin.cn/2012/other/mobile/standout/renmai-speed/bg_wechat_post@2x.png',      codeImg: '', // 二维码转成本地图片地址      localBg: '', // 下载背景到本地图片      posterTemp: '' // 海报临时地址    &#125;  &#125;,  computed:&#123;    btnText () &#123;      return this.authSavePoster ? '保存图片' : '去授权'    &#125;,    openType () &#123;      return this.authSavePoster ? '' : 'openSetting'    &#125;  &#125;,  watch: &#123;    value (val) &#123; // 由于mpvue 在组件中使用created，会在app启动后就调用，只能监听 value来调用生成海报的功能      val &amp;&amp; (this.posterTemp ? this.getAuth() : this.generatorPoster())    &#125;  &#125;,  methods: &#123;    downloadFile () &#123; // 下载背景图片到本地      return new Promise((resolve, reject) =&gt; wx.downloadFile(&#123;        url: this.bg,        success: (res) =&gt; &#123;          console.log('TCL: downloadFile -&gt; res', res)          this.localBg = res.tempFilePath          resolve(res)        &#125;,        fail (err) &#123;          reject(err)        &#125;      &#125;))    &#125;,    // 从接口中获取二维码    getCode () &#123;      return new Promise(async (resolve, reject) =&gt; &#123;        const res = await getWXacode(&#123;          scene: `share=1234`,          page: ''// TODO 获取分享二维码 页面路径        &#125;)        console.log('TCL: getCode -&gt; res', res)        base64src(`data:image/png;base64,$&#123;res.data&#125;`).then(res =&gt; &#123; // 二维码转图片，并返回本地路径          this.codeImg = res          resolve()        &#125;).catch(err =&gt; &#123;          console.log('TCL: getCode -&gt; err', err)        &#125;)      &#125;)    &#125;,    // 合成海报    generatorPoster () &#123;      wx.showLoading(&#123;        title: '下载海报模版中...',        mask: true      &#125;)      Promise.all([        this.downloadFile(),        this.getCode()      ]).then(res =&gt; &#123;        wx.showLoading(&#123;          title: '合成海报中...',          mask: true        &#125;)        const ctx = wx.createCanvasContext('myCanvas', this)        ctx.drawImage(this.localBg, 0, 0, 300, 495)        ctx.drawImage(this.codeImg, 100, 280, 100, 100)        ctx.draw(false, (e) =&gt; &#123;          console.log('TCL: generatorPoster -&gt; e', e)          this.canvasToTemp()        &#125;)      &#125;).catch(() =&gt; &#123;        wx.hideLoading()        wx.showToast(&#123;          title: '海报模版下载失败',          icon: 'none'        &#125;)      &#125;)    &#125;,    // canvas合成的海报，临时保存到本地    canvasToTemp () &#123;      wx.canvasToTempFilePath(&#123;        x: 0,        y: 0,        width: 300,        height: 495,        canvasId: 'myCanvas',        success: (res) =&gt; &#123;          console.log('TCL: success -&gt; res', res)          this.posterTemp = res.tempFilePath          this.getAuth()        &#125;,        fail (err) &#123;          console.log('TCL: fail -&gt; err', err)          wx.showToast(&#123;            title: err.errMsg,            icon: 'none'          &#125;)        &#125;      &#125;)    &#125;,    // 海报保存到相册    savePoster () &#123;      wx.saveImageToPhotosAlbum(&#123;        filePath: this.posterTemp,        success: res =&gt; &#123;          wx.showToast(&#123; title: '海报已成功保存到相册', icon: 'none' &#125;)          this.$emit('input', false)        &#125;,        fail (err) &#123;          this.authSavePoster = false          wx.showToast(&#123;            title: '海报保存失败',            icon: 'none'          &#125;)        &#125;      &#125;)    &#125;,    // 获取设置权限    getAuth () &#123;      wx.getSetting(&#123;        success: (res) =&gt; &#123;          console.log('TCL: getAuth -&gt; res', res)          const &#123; authSetting &#125; = res          if (authSetting['scope.writePhotosAlbum'] === false) &#123;            console.log('去授权')            this.authSavePoster = false            wx.hideLoading()          &#125; else &#123;            this.savePoster()          &#125;        &#125;      &#125;)    &#125;,    // 设置权限页面后，回调    openSetting (&#123;mp: &#123;detail&#125;&#125;) &#123;      console.log('TCL: openSetting -&gt; detail', detail)      detail.authSetting['scope.writePhotosAlbum'] &amp;&amp; (this.authSavePoster = true)    &#125;,    btnTap () &#123;      this.openType || this.savePoster()    &#125;  &#125;&#125;&lt;/script&gt;\nutil.js\n1234567891011121314151617181920212223export function base64src(base64data) &#123;  const fsm = wx.getFileSystemManager()  const FILE_BASE_NAME = 'tmp_base64src'  return new Promise((resolve, reject) =&gt; &#123;    const [, format, bodyData] = /data:image\\/(\\w+);base64,(.*)/.exec(base64data) || []    if (!format) &#123;      reject(new Error('ERROR_BASE64SRC_PARSE'))    &#125;    const filePath = `$&#123;wx.env.USER_DATA_PATH&#125;/$&#123;FILE_BASE_NAME&#125;.$&#123;format&#125;`    const buffer = wx.base64ToArrayBuffer(bodyData)    fsm.writeFile(&#123;      filePath,      data: buffer,      encoding: 'binary',      success() &#123;        resolve(filePath)      &#125;,      fail() &#123;        reject(new Error('ERROR_BASE64SRC_WRITE'))      &#125;,    &#125;)  &#125;)&#125;","dateCreated":"2019-03-20T16:45:45+08:00","dateModified":"2019-03-21T16:21:20+08:00","datePublished":"2019-03-20T16:45:45+08:00","description":"\n","headline":"小程序使用canvas合成分享海报","image":["poster.png"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://leo-july.github.io/2019/03/20/miniApp-poster-canvas/"},"publisher":{"@type":"Organization","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180","logo":{"@type":"ImageObject","url":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"}},"url":"https://leo-july.github.io/2019/03/20/miniApp-poster-canvas/","keywords":"canvas, 小程序","thumbnailUrl":"poster.png"}</script>
+    <meta name="keywords" content="canvas,合成海报,微信小程序">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="小程序使用canvas合成分享海报">
+<meta property="og:url" content="https://leo-july.github.io/2019/03/20/miniApp-poster-canvas/index.html">
+<meta property="og:site_name" content="leo July&#39;s blog">
+<meta property="og:locale" content="zh-cn">
+<meta property="og:image" content="https://leo-july.github.io/2019/03/20/miniApp-poster-canvas/poster.png">
+<meta property="og:updated_time" content="2019-03-21T08:21:20.474Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="小程序使用canvas合成分享海报">
+<meta name="twitter:image" content="https://leo-july.github.io/2019/03/20/miniApp-poster-canvas/poster.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"/>
+    
+    
+        <meta property="og:image" content="https://leo-july.github.io/2019/03/20/miniApp-poster-canvas/poster.png"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://leo-july.github.io/2019/03/20/miniApp-poster-canvas/poster.png" />
+    
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="/assets/css/style-du2xmrqdqrl2ollgeiw050kpl6l4nbyz7bumjuurjgsxyopifvukebxc9lqe.min.css">
+    <!--STYLES END-->
+    
+
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">leo July&#39;s blog</a>
+    </div>
+    
+        
+            <a class="header-right-icon open-algolia-search" href="#search">
+        
+        
+            <i class="search fa-lg"></i>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180" alt="作者的图片">
+                </a>
+                <h4 class="sidebar-profile-name">Leo July</h4>
+                <!--  -->
+                    <h5 class="sidebar-profile-bio">vue,weex,ES6,js,jq,html5,less,css3,git,webpack</h5>
+                <!--  -->
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/ " title="首页">
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">首页</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-categories" title="分类">
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">分类</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-tags" title="标签">
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">标签</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-archives" title="归档">
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">归档</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link open-algolia-search" href="#search" title="搜索">
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">搜索</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="#about" title="关于">
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">关于</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://github.com/Leo-July" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="mailto:15563861385@163.com" target="_blank" rel="noopener" title="Emial">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Emial</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://xuebin.me" target="_blank" rel="noopener" title="xuebin.me">
+                    
+                        <i class="sidebar-button-icon fa fa-link" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">xuebin.me</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://zhangmiao.cc/" target="_blank" rel="noopener" title="zhangmiao.cc">
+                    
+                        <i class="sidebar-button-icon fa fa-link" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">zhangmiao.cc</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+            <div id="main" data-behavior="4"
+                 class="
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+        <div class="post-header main-content-wrap text-left">
+    
+        <h1 class="post-title">
+            小程序使用canvas合成分享海报
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2019-03-20T16:45:45+08:00">
+	
+		    3月 20, 2019
+    	
+    </time>
+    
+        <span>发布在 </span>
+        
+    <a class="category-link" href="/all-categories/小程序/">小程序</a>
+
+
+    
+</div>
+
+    
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<p style="margin: 0 auto;"><img src="poster.png" alt=""></p>
+
+<blockquote>
+<p>我使用的是 mpvue 开发小程序</p>
+</blockquote>
+<h3 id="遇到的坑"><a href="#遇到的坑" class="headerlink" title="遇到的坑"></a>遇到的坑</h3><ol>
+<li><code>canvas.drawImage`</code>image <code>资源必须是本地,所以需要把背景图片，先</code>wx.downloadFile`本地</li>
+<li><code>canvas.drawImage`</code>image <code>资源不能是</code>base64<code>,所以需要把后台返回的</code>base64`二维码转成图片并存在本地</li>
+<li><code>canvas</code> 在小程序里必须加<code>canvas-id=&quot;myCanvas&quot;</code>属性，否则会<code>display:none</code></li>
+<li>如果保存海报到相册授权取消，再次调用<code>wx.saveImageToPhotosAlbum</code>是不弹出授权框，只能使用<code>button</code> <code>open-type=&quot;openType&quot;</code>跳到授权设置页面。</li>
+</ol>
+<h3 id="html"><a href="#html" class="headerlink" title="html"></a>html</h3><figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">template</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">div</span> <span class="attr">v-if</span>=<span class="string">"value"</span> <span class="attr">class</span>=<span class="string">"poster"</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">div</span> <span class="attr">class</span>=<span class="string">"poster-wrap"</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">image</span> <span class="attr">:src</span>=<span class="string">"bg"</span> <span class="attr">alt</span>=<span class="string">""</span> <span class="attr">mode</span>=<span class="string">"widthFix"</span> <span class="attr">class</span>=<span class="string">"poster-bg"</span> /&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">image</span> <span class="attr">:src</span>=<span class="string">"codeImg"</span> <span class="attr">class</span>=<span class="string">"poster-code"</span> /&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">div</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">canvas</span> <span class="attr">class</span>=<span class="string">"canvas"</span> <span class="attr">canvas-id</span>=<span class="string">"myCanvas"</span> <span class="attr">style</span>=<span class="string">"width: 300px;height: 495px"</span>&gt;</span> <span class="tag">&lt;/<span class="name">canvas</span>&gt;</span></span><br><span class="line"></span><br><span class="line">    <span class="tag">&lt;<span class="name">button</span> <span class="attr">class</span>=<span class="string">"btn"</span> <span class="attr">:open-type</span>=<span class="string">"openType"</span> @<span class="attr">opensetting</span>=<span class="string">"openSetting"</span> @<span class="attr">click</span>=<span class="string">"btnTap"</span>&gt;</span>&#123;&#123;btnText&#125;&#125;<span class="tag">&lt;/<span class="name">button</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">div</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">template</span>&gt;</span></span><br><span class="line"></span><br><span class="line"><span class="tag">&lt;<span class="name">style</span> <span class="attr">lang</span>=<span class="string">"scss"</span> <span class="attr">scoped</span>&gt;</span><span class="undefined"></span></span><br><span class="line"><span class="css">  <span class="selector-class">.poster</span> &#123;</span></span><br><span class="line"><span class="undefined">    display: flex;</span></span><br><span class="line"><span class="undefined">    flex-direction: column;</span></span><br><span class="line"><span class="undefined">    position: fixed;</span></span><br><span class="line"><span class="undefined">    top: 0;</span></span><br><span class="line"><span class="undefined">    right: 0;</span></span><br><span class="line"><span class="undefined">    bottom: 0;</span></span><br><span class="line"><span class="undefined">    left: 0;</span></span><br><span class="line"><span class="css">    <span class="selector-tag">background-color</span>: <span class="selector-tag">rgba</span>(0, 0, 0, 0<span class="selector-class">.6</span>);</span></span><br><span class="line"><span class="undefined">    z-index: 10;</span></span><br><span class="line"><span class="undefined">  &#125;</span></span><br><span class="line"><span class="css">  <span class="selector-class">.canvas</span> &#123;</span></span><br><span class="line"><span class="undefined">    z-index: -1;</span></span><br><span class="line"><span class="undefined">    position: absolute;</span></span><br><span class="line"><span class="undefined">    left: 50%;</span></span><br><span class="line"><span class="undefined">    top: 45rpx;</span></span><br><span class="line"><span class="undefined">    transform: translateX(-50%);</span></span><br><span class="line"><span class="undefined">  &#125;</span></span><br><span class="line"><span class="css">  <span class="selector-class">.poster-wrap</span> &#123;</span></span><br><span class="line"><span class="undefined">    position: relative;</span></span><br><span class="line"><span class="undefined">    margin: 45rpx 75rpx;</span></span><br><span class="line"><span class="undefined">    width: 600rpx;</span></span><br><span class="line"><span class="undefined">    height: 989rpx;</span></span><br><span class="line"><span class="undefined">  &#125;</span></span><br><span class="line"><span class="css">  <span class="selector-class">.poster-code</span> &#123;</span></span><br><span class="line"><span class="undefined">    position: absolute;</span></span><br><span class="line"><span class="undefined">    left: 50%;</span></span><br><span class="line"><span class="undefined">    bottom: 229rpx;</span></span><br><span class="line"><span class="undefined">    width: 200rpx;</span></span><br><span class="line"><span class="undefined">    height: 200rpx;</span></span><br><span class="line"><span class="undefined">    transform: translateX(-50%);</span></span><br><span class="line"><span class="undefined">  &#125;</span></span><br><span class="line"><span class="css">  <span class="selector-class">.btn</span> &#123;</span></span><br><span class="line"><span class="undefined">    position: fixed;</span></span><br><span class="line"><span class="undefined">    right: 0;</span></span><br><span class="line"><span class="undefined">    bottom: 0;</span></span><br><span class="line"><span class="undefined">    left: 0;</span></span><br><span class="line"><span class="undefined">    height: 104rpx;</span></span><br><span class="line"><span class="undefined">    font-size: 32rpx;</span></span><br><span class="line"><span class="undefined">    font-weight: 400;</span></span><br><span class="line"><span class="undefined">    text-align: center;</span></span><br><span class="line"><span class="undefined">    color: rgba(255, 255, 255, 1);</span></span><br><span class="line"><span class="undefined">    line-height: 104rpx;</span></span><br><span class="line"><span class="undefined">    background: rgba(26, 138, 250, 1);</span></span><br><span class="line"><span class="undefined">  &#125;</span></span><br><span class="line"><span class="undefined"></span><span class="tag">&lt;/<span class="name">style</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<h3 id="js"><a href="#js" class="headerlink" title="js"></a>js</h3><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br></pre></td><td class="code"><pre><span class="line">&lt;script&gt;</span><br><span class="line"><span class="keyword">import</span> &#123;base64src&#125; <span class="keyword">from</span> <span class="string">'../util'</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">default</span> &#123;</span><br><span class="line">  name: <span class="string">'Poster'</span>,</span><br><span class="line">  props: &#123;</span><br><span class="line">    value: &#123;</span><br><span class="line">      type: <span class="built_in">Boolean</span>,</span><br><span class="line">      <span class="keyword">default</span>: <span class="literal">false</span></span><br><span class="line">    &#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  data () &#123;</span><br><span class="line">    <span class="keyword">return</span> &#123;</span><br><span class="line">      bg: <span class="string">'https://img09.zhaopin.cn/2012/other/mobile/standout/renmai-speed/bg_wechat_post@2x.png'</span>,</span><br><span class="line">      codeImg: <span class="string">''</span>, <span class="comment">// 二维码转成本地图片地址</span></span><br><span class="line">      localBg: <span class="string">''</span>, <span class="comment">// 下载背景到本地图片</span></span><br><span class="line">      posterTemp: <span class="string">''</span> <span class="comment">// 海报临时地址</span></span><br><span class="line">    &#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  computed:&#123;</span><br><span class="line">    btnText () &#123;</span><br><span class="line">      <span class="keyword">return</span> <span class="keyword">this</span>.authSavePoster ? <span class="string">'保存图片'</span> : <span class="string">'去授权'</span></span><br><span class="line">    &#125;,</span><br><span class="line">    openType () &#123;</span><br><span class="line">      <span class="keyword">return</span> <span class="keyword">this</span>.authSavePoster ? <span class="string">''</span> : <span class="string">'openSetting'</span></span><br><span class="line">    &#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  watch: &#123;</span><br><span class="line">    value (val) &#123; <span class="comment">// 由于mpvue 在组件中使用created，会在app启动后就调用，只能监听 value来调用生成海报的功能</span></span><br><span class="line">      val &amp;&amp; (<span class="keyword">this</span>.posterTemp ? <span class="keyword">this</span>.getAuth() : <span class="keyword">this</span>.generatorPoster())</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;,</span><br><span class="line"></span><br><span class="line">  methods: &#123;</span><br><span class="line">    downloadFile () &#123; <span class="comment">// 下载背景图片到本地</span></span><br><span class="line">      <span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Promise</span>(<span class="function">(<span class="params">resolve, reject</span>) =&gt;</span> wx.downloadFile(&#123;</span><br><span class="line">        url: <span class="keyword">this</span>.bg,</span><br><span class="line">        success: <span class="function">(<span class="params">res</span>) =&gt;</span> &#123;</span><br><span class="line">          <span class="built_in">console</span>.log(<span class="string">'TCL: downloadFile -&gt; res'</span>, res)</span><br><span class="line">          <span class="keyword">this</span>.localBg = res.tempFilePath</span><br><span class="line">          resolve(res)</span><br><span class="line">        &#125;,</span><br><span class="line">        fail (err) &#123;</span><br><span class="line">          reject(err)</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;))</span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="comment">// 从接口中获取二维码</span></span><br><span class="line">    getCode () &#123;</span><br><span class="line">      <span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Promise</span>(<span class="keyword">async</span> (resolve, reject) =&gt; &#123;</span><br><span class="line">        <span class="keyword">const</span> res = <span class="keyword">await</span> getWXacode(&#123;</span><br><span class="line">          scene: <span class="string">`share=1234`</span>,</span><br><span class="line">          page: <span class="string">''</span><span class="comment">// TODO 获取分享二维码 页面路径</span></span><br><span class="line">        &#125;)</span><br><span class="line">        <span class="built_in">console</span>.log(<span class="string">'TCL: getCode -&gt; res'</span>, res)</span><br><span class="line"></span><br><span class="line">        base64src(<span class="string">`data:image/png;base64,<span class="subst">$&#123;res.data&#125;</span>`</span>).then(<span class="function"><span class="params">res</span> =&gt;</span> &#123; <span class="comment">// 二维码转图片，并返回本地路径</span></span><br><span class="line">          <span class="keyword">this</span>.codeImg = res</span><br><span class="line">          resolve()</span><br><span class="line">        &#125;).catch(<span class="function"><span class="params">err</span> =&gt;</span> &#123;</span><br><span class="line">          <span class="built_in">console</span>.log(<span class="string">'TCL: getCode -&gt; err'</span>, err)</span><br><span class="line">        &#125;)</span><br><span class="line">      &#125;)</span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="comment">// 合成海报</span></span><br><span class="line">    generatorPoster () &#123;</span><br><span class="line">      wx.showLoading(&#123;</span><br><span class="line">        title: <span class="string">'下载海报模版中...'</span>,</span><br><span class="line">        mask: <span class="literal">true</span></span><br><span class="line">      &#125;)</span><br><span class="line">      <span class="built_in">Promise</span>.all([</span><br><span class="line">        <span class="keyword">this</span>.downloadFile(),</span><br><span class="line">        <span class="keyword">this</span>.getCode()</span><br><span class="line">      ]).then(<span class="function"><span class="params">res</span> =&gt;</span> &#123;</span><br><span class="line">        wx.showLoading(&#123;</span><br><span class="line">          title: <span class="string">'合成海报中...'</span>,</span><br><span class="line">          mask: <span class="literal">true</span></span><br><span class="line">        &#125;)</span><br><span class="line">        <span class="keyword">const</span> ctx = wx.createCanvasContext(<span class="string">'myCanvas'</span>, <span class="keyword">this</span>)</span><br><span class="line">        ctx.drawImage(<span class="keyword">this</span>.localBg, <span class="number">0</span>, <span class="number">0</span>, <span class="number">300</span>, <span class="number">495</span>)</span><br><span class="line">        ctx.drawImage(<span class="keyword">this</span>.codeImg, <span class="number">100</span>, <span class="number">280</span>, <span class="number">100</span>, <span class="number">100</span>)</span><br><span class="line">        ctx.draw(<span class="literal">false</span>, (e) =&gt; &#123;</span><br><span class="line">          <span class="built_in">console</span>.log(<span class="string">'TCL: generatorPoster -&gt; e'</span>, e)</span><br><span class="line">          <span class="keyword">this</span>.canvasToTemp()</span><br><span class="line">        &#125;)</span><br><span class="line">      &#125;).catch(<span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">        wx.hideLoading()</span><br><span class="line">        wx.showToast(&#123;</span><br><span class="line">          title: <span class="string">'海报模版下载失败'</span>,</span><br><span class="line">          icon: <span class="string">'none'</span></span><br><span class="line">        &#125;)</span><br><span class="line">      &#125;)</span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="comment">// canvas合成的海报，临时保存到本地</span></span><br><span class="line">    canvasToTemp () &#123;</span><br><span class="line">      wx.canvasToTempFilePath(&#123;</span><br><span class="line">        x: <span class="number">0</span>,</span><br><span class="line">        y: <span class="number">0</span>,</span><br><span class="line">        width: <span class="number">300</span>,</span><br><span class="line">        height: <span class="number">495</span>,</span><br><span class="line">        canvasId: <span class="string">'myCanvas'</span>,</span><br><span class="line">        success: <span class="function">(<span class="params">res</span>) =&gt;</span> &#123;</span><br><span class="line">          <span class="built_in">console</span>.log(<span class="string">'TCL: success -&gt; res'</span>, res)</span><br><span class="line">          <span class="keyword">this</span>.posterTemp = res.tempFilePath</span><br><span class="line">          <span class="keyword">this</span>.getAuth()</span><br><span class="line">        &#125;,</span><br><span class="line">        fail (err) &#123;</span><br><span class="line">          <span class="built_in">console</span>.log(<span class="string">'TCL: fail -&gt; err'</span>, err)</span><br><span class="line">          wx.showToast(&#123;</span><br><span class="line">            title: err.errMsg,</span><br><span class="line">            icon: <span class="string">'none'</span></span><br><span class="line">          &#125;)</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;)</span><br><span class="line">    &#125;,</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 海报保存到相册</span></span><br><span class="line">    savePoster () &#123;</span><br><span class="line">      wx.saveImageToPhotosAlbum(&#123;</span><br><span class="line">        filePath: <span class="keyword">this</span>.posterTemp,</span><br><span class="line">        success: <span class="function"><span class="params">res</span> =&gt;</span> &#123;</span><br><span class="line">          wx.showToast(&#123; <span class="attr">title</span>: <span class="string">'海报已成功保存到相册'</span>, <span class="attr">icon</span>: <span class="string">'none'</span> &#125;)</span><br><span class="line">          <span class="keyword">this</span>.$emit(<span class="string">'input'</span>, <span class="literal">false</span>)</span><br><span class="line">        &#125;,</span><br><span class="line">        fail (err) &#123;</span><br><span class="line">          <span class="keyword">this</span>.authSavePoster = <span class="literal">false</span></span><br><span class="line">          wx.showToast(&#123;</span><br><span class="line">            title: <span class="string">'海报保存失败'</span>,</span><br><span class="line">            icon: <span class="string">'none'</span></span><br><span class="line">          &#125;)</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;)</span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="comment">// 获取设置权限</span></span><br><span class="line">    getAuth () &#123;</span><br><span class="line">      wx.getSetting(&#123;</span><br><span class="line">        success: <span class="function">(<span class="params">res</span>) =&gt;</span> &#123;</span><br><span class="line">          <span class="built_in">console</span>.log(<span class="string">'TCL: getAuth -&gt; res'</span>, res)</span><br><span class="line">          <span class="keyword">const</span> &#123; authSetting &#125; = res</span><br><span class="line">          <span class="keyword">if</span> (authSetting[<span class="string">'scope.writePhotosAlbum'</span>] === <span class="literal">false</span>) &#123;</span><br><span class="line">            <span class="built_in">console</span>.log(<span class="string">'去授权'</span>)</span><br><span class="line">            <span class="keyword">this</span>.authSavePoster = <span class="literal">false</span></span><br><span class="line">            wx.hideLoading()</span><br><span class="line">          &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">this</span>.savePoster()</span><br><span class="line">          &#125;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;)</span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="comment">// 设置权限页面后，回调</span></span><br><span class="line">    openSetting (&#123;<span class="attr">mp</span>: &#123;detail&#125;&#125;) &#123;</span><br><span class="line">      <span class="built_in">console</span>.log(<span class="string">'TCL: openSetting -&gt; detail'</span>, detail)</span><br><span class="line">      detail.authSetting[<span class="string">'scope.writePhotosAlbum'</span>] &amp;&amp; (<span class="keyword">this</span>.authSavePoster = <span class="literal">true</span>)</span><br><span class="line">    &#125;,</span><br><span class="line">    btnTap () &#123;</span><br><span class="line">      <span class="keyword">this</span>.openType || <span class="keyword">this</span>.savePoster()</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line">&lt;<span class="regexp">/script&gt;</span></span><br></pre></td></tr></table></figure>
+<p>util.js</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">export</span> <span class="function"><span class="keyword">function</span> <span class="title">base64src</span>(<span class="params">base64data</span>) </span>&#123;</span><br><span class="line">  <span class="keyword">const</span> fsm = wx.getFileSystemManager()</span><br><span class="line">  <span class="keyword">const</span> FILE_BASE_NAME = <span class="string">'tmp_base64src'</span></span><br><span class="line">  <span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Promise</span>(<span class="function">(<span class="params">resolve, reject</span>) =&gt;</span> &#123;</span><br><span class="line">    <span class="keyword">const</span> [, format, bodyData] = <span class="regexp">/data:image\/(\w+);base64,(.*)/</span>.exec(base64data) || []</span><br><span class="line">    <span class="keyword">if</span> (!format) &#123;</span><br><span class="line">      reject(<span class="keyword">new</span> <span class="built_in">Error</span>(<span class="string">'ERROR_BASE64SRC_PARSE'</span>))</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">const</span> filePath = <span class="string">`<span class="subst">$&#123;wx.env.USER_DATA_PATH&#125;</span>/<span class="subst">$&#123;FILE_BASE_NAME&#125;</span>.<span class="subst">$&#123;format&#125;</span>`</span></span><br><span class="line">    <span class="keyword">const</span> buffer = wx.base64ToArrayBuffer(bodyData)</span><br><span class="line">    fsm.writeFile(&#123;</span><br><span class="line">      filePath,</span><br><span class="line">      data: buffer,</span><br><span class="line">      encoding: <span class="string">'binary'</span>,</span><br><span class="line">      success() &#123;</span><br><span class="line">        resolve(filePath)</span><br><span class="line">      &#125;,</span><br><span class="line">      fail() &#123;</span><br><span class="line">        reject(<span class="keyword">new</span> <span class="built_in">Error</span>(<span class="string">'ERROR_BASE64SRC_WRITE'</span>))</span><br><span class="line">      &#125;,</span><br><span class="line">    &#125;)</span><br><span class="line">  &#125;)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">标签</span><br>
+                
+    <a class="tag tag--primary tag--small t-link" href="/all-tags/canvas/">canvas</a> <a class="tag tag--primary tag--small t-link" href="/all-tags/小程序/">小程序</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/08/01/git-gitignore/" data-tooltip="git .gitignore 设置了无效" aria-label="上一篇: git .gitignore 设置了无效">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">上一篇</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/01/16/macPro-lock/" data-tooltip="mac锁屏 不断网 快捷键" aria-label="下一篇: mac锁屏 不断网 快捷键">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">下一篇</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2019/03/20/miniApp-poster-canvas/" title="分享到 Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2019/03/20/miniApp-poster-canvas/" title="分享到 Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2019/03/20/miniApp-poster-canvas/" title="分享到 Google+">
+                    <i class="fab fa-google-plus" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2019/03/20/miniApp-poster-canvas/" title="分享到 Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2019/03/20/miniApp-poster-canvas/&amp;title=小程序使用canvas合成分享海报" title="分享到 QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2019/03/20/miniApp-poster-canvas/" title="分享到 Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+    </div>
+</article>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2021 Leo July. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/08/01/git-gitignore/" data-tooltip="git .gitignore 设置了无效" aria-label="上一篇: git .gitignore 设置了无效">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">上一篇</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/01/16/macPro-lock/" data-tooltip="mac锁屏 不断网 快捷键" aria-label="下一篇: mac锁屏 不断网 快捷键">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">下一篇</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2019/03/20/miniApp-poster-canvas/" title="分享到 Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2019/03/20/miniApp-poster-canvas/" title="分享到 Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2019/03/20/miniApp-poster-canvas/" title="分享到 Google+">
+                    <i class="fab fa-google-plus" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2019/03/20/miniApp-poster-canvas/" title="分享到 Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2019/03/20/miniApp-poster-canvas/&amp;title=小程序使用canvas合成分享海报" title="分享到 QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2019/03/20/miniApp-poster-canvas/" title="分享到 Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+    <i id="btn-close-shareoptions" class="fa fa-times"></i>
+    <ul class="share-options">
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2019/03/20/miniApp-poster-canvas/">
+                    <i class="fab fa-facebook" aria-hidden="true"></i><span>分享到 Facebook</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2019/03/20/miniApp-poster-canvas/">
+                    <i class="fab fa-twitter" aria-hidden="true"></i><span>分享到 Twitter</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2019/03/20/miniApp-poster-canvas/">
+                    <i class="fab fa-google-plus" aria-hidden="true"></i><span>分享到 Google+</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2019/03/20/miniApp-poster-canvas/">
+                    <i class="fab fa-weibo" aria-hidden="true"></i><span>分享到 Weibo</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2019/03/20/miniApp-poster-canvas/&amp;title=小程序使用canvas合成分享海报">
+                    <i class="fab fa-qq" aria-hidden="true"></i><span>分享到 QQ</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2019/03/20/miniApp-poster-canvas/">
+                    <i class="fa fa-star" aria-hidden="true"></i><span>分享到 Qzone</span>
+                </a>
+            </li>
+        
+    </ul>
+</div>
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180" alt="作者的图片">
+        
+            <h4 id="about-card-name">Leo July</h4>
+        <!--  -->
+            <div id="about-card-bio">vue,weex,ES6,js,jq,html5,less,css3,git,webpack</div>
+        <!--  -->
+        <!--  -->
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br>
+                高级前端工程师
+            </div>
+        <!--  -->
+        
+    </div>
+</div>
+
+        
+            <div id="algolia-search-modal" class="modal-container">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="close-button"><i class="fa fa-times"></i></span>
+            <a href="https://algolia.com" target="_blank" rel="noopener" class="searchby-algolia text-color-light link-unstyled">
+                <span class="searchby-algolia-text text-color-light text-small">by</span>
+                <img class="searchby-algolia-logo" src="https://www.algolia.com/static_assets/images/press/downloads/algolia-light.svg">
+            </a>
+            <i class="search-icon fa fa-search"></i>
+            <form id="algolia-search-form">
+                <input type="text" id="algolia-search-input" name="search" class="form-control input--large search-input" placeholder="Search ">
+            </form>
+        </div>
+        <div class="modal-body">
+            <div class="no-result text-color-light text-center">没有找到文章</div>
+            <div class="results">
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/16/h5-video/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/01/16/h5-video/video.png" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/16/h5-video/">
+                            <h3 class="media-heading">h5 video移动端填坑记</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年1月16日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/22/vue-chat-room/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/01/22/vue-chat-room/timg.jpeg" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/22/vue-chat-room/">
+                            <h3 class="media-heading">vue 仿app聊天室</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年1月22日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/23/vue-barrage/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/01/23/vue-barrage/thumbnail.jpg" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/23/vue-barrage/">
+                            <h3 class="media-heading">vue 横屏滚动弹幕</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年1月23日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/02/23/wechat/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/02/23/wechat/show.jpg" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/02/23/wechat/">
+                            <h3 class="media-heading">微信小程序中遇到的坑和一些小技巧</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年2月23日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/js-curring/">
+                            <h3 class="media-heading">js-柯里化</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- clearReading: true
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York"
+comments: false -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/Hexo-browsersync/">
+                            <h3 class="media-heading">Hexo使用browsersync浏览器热更新</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/axios/">
+                            <h3 class="media-heading">axios 二次封装，带有静默模式</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!--
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/jsDom/">
+                            <h3 class="media-heading">jsDom is not a function</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/29/xcode-select/">
+                            <h3 class="media-heading">mac xcode-select 下载安装</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月29日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/29/ssh -T git-github-com/">
+                            <h3 class="media-heading">ssh -T git@github.com 出现Permission denied (publickey)</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月29日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+            </div>
+        </div>
+        <div class="modal-footer">
+            <p class="results-count text-medium" data-message-zero="没有找到文章" data-message-one="找到 1 篇文章" data-message-other="找到 {n} 篇文章">
+                找到 22 篇文章
+            </p>
+        </div>
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="/assets/js/script-vufjrm3fmbuttogo1hxuu0w9w0sesk5iyysjuguc2hdhufot9szxg8twijry.min.js"></script>
+<!--SCRIPTS END-->
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.14.1/moment-with-locales.min.js"></script>
+    <script src="//cdn.jsdelivr.net/algoliasearch/3/algoliasearch.min.js"></script>
+    <script>
+        var algoliaClient = algoliasearch('QDFOH7HV1P', '5132f23a0d2983147e805aa47a5df3e4');
+        var algoliaIndex = algoliaClient.initIndex('tranquilpeak');
+    </script>
+
+
+    </body>
+</html>

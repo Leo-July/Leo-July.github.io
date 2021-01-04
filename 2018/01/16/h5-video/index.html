@@ -1,0 +1,920 @@
+
+<!DOCTYPE html>
+<html lang="zh-cn">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="leo July&#39;s blog">
+    <title>h5 video移动端填坑记 - leo July&#39;s blog</title>
+    <meta name="author" content="Leo July">
+    
+        <meta name="keywords" content="javascript,h5 video">
+    
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"},"articleBody":"\n12345678910111213141516171819202122232425262728&lt;video id=\"video\"   style=\"object-fit:fill\"   autoplay  webkit-playsinline   playsinline   x5-video-player-type=\"h5\"  x5-video-player-fullscreen=\"true\"  x5-video-orientation=\"portraint\"   src=\"video.mp4\" /&gt;&lt;/video&gt;&lt;!--  object-fit: fill   视频内容充满整个video容器  poster:\"img.jpg\" 视频封面  autoplay： 自动播放     auto - 当页面加载后载入整个视频     meta - 当页面加载后只载入元数据     none - 当页面加载后不载入视频  muted：当设置该属性后，它规定视频的音频输出应该被静音  webkit-playsinline playsinline:   内联播放  x5-video-player-type=\"h5\" :  启用x5内核H5播放器  x5-video-player-fullscreen=\"true\"  全屏设置。ture和false的设置会导致布局上的不一样  x5-video-orientation=\"portraint\" ：声明播放器支持的方向，可选值landscape 横屏,portraint竖屏。                                     默认值portraint。无论是直播还是全屏H5一般都是竖屏播放，                                     但是这个属性需要x5-video-player-type开启H5模式--&gt;\n自动播放\n设置autoplay属性1&lt;video autoplay&gt;&lt;/video&gt;\n\n移动浏览器中但是在很多移动浏览器里，都是要求用户的真实操作来（touchend、click、doubleclick 或 keydown 事件等标准的事件）触发调用video.play(),才能自动播放影音视频。\n123 dom.addEventListener('click', function () &#123;   video.play()&#125;)\n\n微信中也可以在  wx.ready()里触发video.play()\n123wx.ready(function () &#123;  video.play()&#125;)\n\n\n内联播放\n设置属性 webkit-playsinline playsinline\n\n1&lt;video id=\"video\" webkit-playsinline playsinline /&gt;&lt;/video&gt;\n在iOS Safari和一些安卓的一些浏览器下播放视频的时候，不能在h5页面中播放视频，系统会自动接管视频\n如果需要在h5页面内播放视频，需要在视频标签上加上   webkit-playsinline，在iOS10以后，需要加上playsinline,建议同时加上这两个属性。同时还需要app支持这种模式1webview.allowsInlineMediaPlayback = YES;\nios手Q和微信都支持这种模式，但是android 微信就挂了\n\nandroid 微信android微信内置浏览器采用腾讯X5内核，不遵循X5web标准，video强制全屏就是其一。视频播放完毕后还会出现QQ自己的视频推荐\n\n据说，其有个白名单，白名单下的视频资源，就不会全屏。但是腾讯已经不能再增加白名单了。尿性，无解。。。。。。\n目前还有一个解决办法，就是使用h5  canvas  播放 video\n\ncanvas 播放视频使用canvas 遇到的坑：video 必须加 x5-video-player-type=&quot;h5&quot; 属性，否则，在移动端就会卡死不能播放视频，个人认为是因为视频被接管的原因导致。\n\n123456789101112131415161718192021222324252627282930313233&lt;div class=\"wrapper\"&gt;  &lt;video id=\"video\" style=\"display: none\" autoplay src=\"video.mp4\" x5-video-player-type=\"h5\"&gt;&lt;/video&gt;  &lt;canvas id=\"canvas\"&gt;&lt;/canvas&gt;&lt;/div&gt;&lt;script&gt;  var video = document.querySelector('#video')  var canvas = document.querySelector('#canvas')  var wrapper = canvas.parentNode  var width = wrapper.offsetWidth  var height = wrapper.offsetHeight  var ctx = c.getContext('2d')  var time = null  canvas.width = width  canvas.height = height  canvas.addEventListener('click', function () &#123;    video.play()  &#125;)  video.addEventListener('play', function () &#123;      time = window.setInterval(function () &#123;        ctx.drawImage(v, 0, 0, width, height);      &#125;, 20);  &#125;, false);  video.addEventListener('pause', function () &#123;      window.clearInterval(time);  &#125;, false);  video.addEventListener('ended', function () &#123;      window.clearInterval(time);  &#125;, false);&lt;/script&gt;\n最后发现，虽然使用canvas播放视频，android微信中可以屏蔽全屏视频播放完的推荐视频。但是还没办法禁止视频播放时 的全屏问题。还是得万恶的白名单。吐槽。。。。。。。。。。。。。。。。更坑爹的是没有找到js触发退出全屏的方法。\nios黑屏问题ios 在播放视频时，会出现短暂的黑屏，然后正常显示。\n解决方法：\n在视频上层覆盖一个 添加一个div并用一张图片填充，制造播放前加载假象。然后监听事件 timeupdate ，视频播放有画面时移除这个“div块”12345video.addEventListener('timeupdate', function()&#123;  if(video.currentTime &gt; 0.1)&#123;      posterImg.hidden();  &#125;&#125;)\nMedia 方法和属性HTMLVideoElement和HTMLAudioElement 均继承自HTMLMediaElement1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950515253545556575859606162636465666768697071727374757677787980// 媒体错误MediaObj.error; //null:正常MediaObj.error.code; //1.用户终止 2.网络错误 3.解码错误 4.URL无效//媒体当前状态MediaObj.currentSrc; //返回当前资源的URLMediaObj.src = value; //返回或设置当前资源的URLMediaObj.canPlayType(type); //是否能播放某种格式的资源MediaObj.networkState; //0.此元素未初始化 1.正常但没有使用网络 2.正在下载数据 3.没有找到资源MediaObj.load(); //重新加载src指定的资源MediaObj.buffered; //返回已缓冲区域，TimeRangesMediaObj.preload; //none:不预载 metadata:预载资源信息 auto://准备状态MediaObj.readyState;//1:HAVE_NOTHING                     //2:HAVE_METADATA                    //3.HAVE_CURRENT_DATA                   //4.HAVE_FUTURE_DATA                  //5.HAVE_ENOUGH_DATAMediaObj.seeking; //是否正在seeking//回放状态MediaObj.currentTime = value; //当前播放的位置，赋值可改变位置MediaObj.startTime; //一般为0，如果为流媒体或者不从0开始的资源，则不为0MediaObj.duration; //当前资源长度 流返回无限MediaObj.paused; //是否暂停MediaObj.defaultPlaybackRate = value;//默认的回放速度，可以设置MediaObj.playbackRate = value;//当前播放速度，设置后马上改变MediaObj.played; //返回已经播放的区域，TimeRanges，关于此对象见下文MediaObj.seekable; //返回可以seek的区域 TimeRangesMediaObj.ended; //是否结束MediaObj.autoPlay; //是否自动播放MediaObj.loop; //是否循环播放MediaObj.play(); //播放MediaObj.pause(); //暂停//视频控制MediaObj.controls;//是否有默认控制条MediaObj.volume = value; //音量MediaObj.muted = value; //静音//TimeRanges(区域)对象TimeRanges.length; //区域段数TimeRanges.start(index) //第index段区域的开始位置TimeRanges.end(index) //第index段区域的结束位置//【★★★**相关事件**★★★】//事件分发var eventTester = function(e)&#123;    Media.addEventListener(e,function()&#123;        console.log((new Date()).getTime(),e)    &#125;,false);&#125;//事件监听eventTester(\"loadstart\"); //客户端开始请求数据eventTester(\"progress\"); //客户端正在请求数据eventTester(\"suspend\"); //延迟下载eventTester(\"abort\"); //客户端主动终止下载（不是因为错误引起）eventTester(\"loadstart\"); //客户端开始请求数据eventTester(\"progress\"); //客户端正在请求数据eventTester(\"suspend\"); //延迟下载eventTester(\"abort\"); //客户端主动终止下载（不是因为错误引起），eventTester(\"error\"); //请求数据时遇到错误eventTester(\"stalled\"); //网速失速eventTester(\"play\"); //play()和autoplay开始播放时触发eventTester(\"pause\"); //pause()触发eventTester(\"loadedmetadata\"); //成功获取资源长度eventTester(\"loadeddata\"); //eventTester(\"waiting\"); //等待数据，并非错误eventTester(\"playing\"); //开始回放eventTester(\"canplay\"); //可以播放，但中途可能因为加载而暂停eventTester(\"canplaythrough\"); //可以播放，歌曲全部加载完毕eventTester(\"seeking\"); //寻找中eventTester(\"seeked\"); //寻找完毕eventTester(\"timeupdate\"); //播放时间改变eventTester(\"ended\"); //播放结束eventTester(\"ratechange\"); //播放速率改变eventTester(\"durationchange\"); //资源长度改变eventTester(\"volumechange\"); //音量改变","dateCreated":"2018-01-16T11:07:28+08:00","dateModified":"2018-11-27T09:58:01+08:00","datePublished":"2018-01-16T11:07:28+08:00","description":"","headline":"h5 video移动端填坑记","image":["video.png","banner.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://leo-july.github.io/2018/01/16/h5-video/"},"publisher":{"@type":"Organization","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180","logo":{"@type":"ImageObject","url":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"}},"url":"https://leo-july.github.io/2018/01/16/h5-video/","keywords":"h5","thumbnailUrl":"video.png"}</script>
+    <meta name="keywords" content="javascript,h5 video">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="h5 video移动端填坑记">
+<meta property="og:url" content="https://leo-july.github.io/2018/01/16/h5-video/index.html">
+<meta property="og:site_name" content="leo July&#39;s blog">
+<meta property="og:locale" content="zh-cn">
+<meta property="og:updated_time" content="2018-11-27T01:58:01.601Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="h5 video移动端填坑记">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"/>
+    
+    
+        <meta property="og:image" content="https://leo-july.github.io/2018/01/16/h5-video/video.png"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://leo-july.github.io/2018/01/16/h5-video/video.png" />
+    
+    
+        <meta property="og:image" content="https://leo-july.github.io/2018/01/16/h5-video/banner.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://leo-july.github.io/2018/01/16/h5-video/banner.jpg" />
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="/assets/css/style-du2xmrqdqrl2ollgeiw050kpl6l4nbyz7bumjuurjgsxyopifvukebxc9lqe.min.css">
+    <!--STYLES END-->
+    
+
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">leo July&#39;s blog</a>
+    </div>
+    
+        
+            <a class="header-right-icon open-algolia-search" href="#search">
+        
+        
+            <i class="search fa-lg"></i>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180" alt="作者的图片">
+                </a>
+                <h4 class="sidebar-profile-name">Leo July</h4>
+                <!--  -->
+                    <h5 class="sidebar-profile-bio">vue,weex,ES6,js,jq,html5,less,css3,git,webpack</h5>
+                <!--  -->
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/ " title="首页">
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">首页</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-categories" title="分类">
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">分类</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-tags" title="标签">
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">标签</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-archives" title="归档">
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">归档</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link open-algolia-search" href="#search" title="搜索">
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">搜索</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="#about" title="关于">
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">关于</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://github.com/Leo-July" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="mailto:15563861385@163.com" target="_blank" rel="noopener" title="Emial">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Emial</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://xuebin.me" target="_blank" rel="noopener" title="xuebin.me">
+                    
+                        <i class="sidebar-button-icon fa fa-link" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">xuebin.me</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://zhangmiao.cc/" target="_blank" rel="noopener" title="zhangmiao.cc">
+                    
+                        <i class="sidebar-button-icon fa fa-link" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">zhangmiao.cc</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full" style="background-image:url('/2018/01/16/h5-video/banner.jpg');" data-behavior="4">
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaOut
+                        hasCoverCaption">
+                
+<article class="post">
+    
+        <span class="post-header-cover-caption caption">A beautiful sunrise</span>
+    
+    
+        <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            h5 video移动端填坑记
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2018-01-16T11:07:28+08:00">
+	
+		    1月 16, 2018
+    	
+    </time>
+    
+        <span>发布在 </span>
+        
+    <a class="category-link" href="/all-categories/前端/">前端</a>
+
+
+    
+</div>
+
+    
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">video</span> <span class="attr">id</span>=<span class="string">"video"</span> </span></span><br><span class="line"><span class="tag">  <span class="attr">style</span>=<span class="string">"object-fit:fill"</span> </span></span><br><span class="line"><span class="tag">  <span class="attr">autoplay</span></span></span><br><span class="line"><span class="tag">  <span class="attr">webkit-playsinline</span> </span></span><br><span class="line"><span class="tag">  <span class="attr">playsinline</span> </span></span><br><span class="line"><span class="tag">  <span class="attr">x5-video-player-type</span>=<span class="string">"h5"</span></span></span><br><span class="line"><span class="tag">  <span class="attr">x5-video-player-fullscreen</span>=<span class="string">"true"</span></span></span><br><span class="line"><span class="tag">  <span class="attr">x5-video-orientation</span>=<span class="string">"portraint"</span> </span></span><br><span class="line"><span class="tag">  <span class="attr">src</span>=<span class="string">"video.mp4"</span> /&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">video</span>&gt;</span></span><br><span class="line"><span class="comment">&lt;!--</span></span><br><span class="line"><span class="comment">  object-fit: fill   视频内容充满整个video容器</span></span><br><span class="line"><span class="comment">  poster:"img.jpg" 视频封面</span></span><br><span class="line"><span class="comment">  autoplay： 自动播放</span></span><br><span class="line"><span class="comment">     auto - 当页面加载后载入整个视频</span></span><br><span class="line"><span class="comment">     meta - 当页面加载后只载入元数据</span></span><br><span class="line"><span class="comment">     none - 当页面加载后不载入视频</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">  muted：当设置该属性后，它规定视频的音频输出应该被静音</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">  webkit-playsinline playsinline:   内联播放</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">  x5-video-player-type="h5" :  启用x5内核H5播放器</span></span><br><span class="line"><span class="comment">  x5-video-player-fullscreen="true"  全屏设置。ture和false的设置会导致布局上的不一样</span></span><br><span class="line"><span class="comment">  x5-video-orientation="portraint" ：声明播放器支持的方向，可选值landscape 横屏,portraint竖屏。</span></span><br><span class="line"><span class="comment">                                     默认值portraint。无论是直播还是全屏H5一般都是竖屏播放，</span></span><br><span class="line"><span class="comment">                                     但是这个属性需要x5-video-player-type开启H5模式</span></span><br><span class="line"><span class="comment">--&gt;</span></span><br></pre></td></tr></table></figure>
+<h3 id="自动播放"><a href="#自动播放" class="headerlink" title="自动播放"></a>自动播放</h3><ul>
+<li><h6 id="设置autoplay属性"><a href="#设置autoplay属性" class="headerlink" title="设置autoplay属性"></a>设置autoplay属性</h6><figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">video</span> <span class="attr">autoplay</span>&gt;</span><span class="tag">&lt;/<span class="name">video</span>&gt;</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><h6 id="移动浏览器中"><a href="#移动浏览器中" class="headerlink" title="移动浏览器中"></a>移动浏览器中</h6><p>但是在很多移动浏览器里，都是要求用户的真实操作来（touchend、click、doubleclick 或 keydown 事件等标准的事件）触发调用<code>video.play()</code>,才能自动播放影音视频。</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"> dom.addEventListener(<span class="string">'click'</span>, <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span><br><span class="line">   video.play()</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
+</li>
+<li><h6 id="微信中"><a href="#微信中" class="headerlink" title="微信中"></a>微信中</h6><p>也可以在  <code>wx.ready()</code>里触发<code>video.play()</code></p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">wx.ready(<span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span><br><span class="line">  video.play()</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<h3 id="内联播放"><a href="#内联播放" class="headerlink" title="内联播放"></a>内联播放</h3><ul>
+<li><h6 id="设置属性-webkit-playsinline-playsinline"><a href="#设置属性-webkit-playsinline-playsinline" class="headerlink" title="设置属性 webkit-playsinline playsinline"></a>设置属性 <code>webkit-playsinline playsinline</code></h6></li>
+</ul>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">video</span> <span class="attr">id</span>=<span class="string">"video"</span> <span class="attr">webkit-playsinline</span> <span class="attr">playsinline</span> /&gt;</span><span class="tag">&lt;/<span class="name">video</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>在iOS Safari和一些安卓的一些浏览器下播放视频的时候，不能在h5页面中播放视频，系统会自动接管视频</p>
+<p>如果需要在h5页面内播放视频，需要在视频标签上加上   <code>webkit-playsinline</code>，在iOS10以后，需要加上<code>playsinline</code>,建议同时加上这两个属性。同时还需要app支持这种模式<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">webview.allowsInlineMediaPlayback = YES;</span><br></pre></td></tr></table></figure></p>
+<p>ios手Q和微信都支持这种模式，但是android 微信就挂了</p>
+<ul>
+<li><h6 id="android-微信"><a href="#android-微信" class="headerlink" title="android 微信"></a>android 微信</h6>android微信内置浏览器采用腾讯X5内核，不遵循X5web标准，video强制全屏就是其一。视频播放完毕后还会出现QQ自己的视频推荐</li>
+</ul>
+<p>据说，其有个白名单，白名单下的视频资源，就不会全屏。但是腾讯已经不能再增加白名单了。尿性，无解。。。。。。</p>
+<p>目前还有一个解决办法，就是使用h5  <code>canvas</code>  播放 <code>video</code></p>
+<ul>
+<li><h6 id="canvas-播放视频"><a href="#canvas-播放视频" class="headerlink" title="canvas 播放视频"></a>canvas 播放视频</h6>使用canvas 遇到的坑：<code>video</code> 必须加 <code>x5-video-player-type=&quot;h5&quot;</code> 属性，否则，在移动端就会卡死不能播放视频，个人认为是因为视频被接管的原因导致。</li>
+</ul>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">div</span> <span class="attr">class</span>=<span class="string">"wrapper"</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">video</span> <span class="attr">id</span>=<span class="string">"video"</span> <span class="attr">style</span>=<span class="string">"display: none"</span> <span class="attr">autoplay</span> <span class="attr">src</span>=<span class="string">"video.mp4"</span> <span class="attr">x5-video-player-type</span>=<span class="string">"h5"</span>&gt;</span><span class="tag">&lt;/<span class="name">video</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">canvas</span> <span class="attr">id</span>=<span class="string">"canvas"</span>&gt;</span><span class="tag">&lt;/<span class="name">canvas</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">div</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">script</span>&gt;</span><span class="undefined"></span></span><br><span class="line"><span class="javascript">  <span class="keyword">var</span> video = <span class="built_in">document</span>.querySelector(<span class="string">'#video'</span>)</span></span><br><span class="line"><span class="javascript">  <span class="keyword">var</span> canvas = <span class="built_in">document</span>.querySelector(<span class="string">'#canvas'</span>)</span></span><br><span class="line"><span class="javascript">  <span class="keyword">var</span> wrapper = canvas.parentNode</span></span><br><span class="line"><span class="javascript">  <span class="keyword">var</span> width = wrapper.offsetWidth</span></span><br><span class="line"><span class="javascript">  <span class="keyword">var</span> height = wrapper.offsetHeight</span></span><br><span class="line"><span class="javascript">  <span class="keyword">var</span> ctx = c.getContext(<span class="string">'2d'</span>)</span></span><br><span class="line"><span class="javascript">  <span class="keyword">var</span> time = <span class="literal">null</span></span></span><br><span class="line"><span class="undefined">  canvas.width = width</span></span><br><span class="line"><span class="undefined">  canvas.height = height</span></span><br><span class="line"><span class="undefined"></span></span><br><span class="line"><span class="javascript">  canvas.addEventListener(<span class="string">'click'</span>, <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span></span><br><span class="line"><span class="undefined">    video.play()</span></span><br><span class="line"><span class="undefined">  &#125;)</span></span><br><span class="line"><span class="undefined"></span></span><br><span class="line"><span class="javascript">  video.addEventListener(<span class="string">'play'</span>, <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span></span><br><span class="line"><span class="javascript">      time = <span class="built_in">window</span>.setInterval(<span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span></span><br><span class="line"><span class="undefined">        ctx.drawImage(v, 0, 0, width, height);</span></span><br><span class="line"><span class="undefined">      &#125;, 20);</span></span><br><span class="line"><span class="javascript">  &#125;, <span class="literal">false</span>);</span></span><br><span class="line"><span class="undefined"></span></span><br><span class="line"><span class="javascript">  video.addEventListener(<span class="string">'pause'</span>, <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span></span><br><span class="line"><span class="javascript">      <span class="built_in">window</span>.clearInterval(time);</span></span><br><span class="line"><span class="javascript">  &#125;, <span class="literal">false</span>);</span></span><br><span class="line"><span class="undefined"></span></span><br><span class="line"><span class="javascript">  video.addEventListener(<span class="string">'ended'</span>, <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span></span><br><span class="line"><span class="javascript">      <span class="built_in">window</span>.clearInterval(time);</span></span><br><span class="line"><span class="javascript">  &#125;, <span class="literal">false</span>);</span></span><br><span class="line"><span class="undefined"></span><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>最后发现，虽然使用<code>canvas</code>播放视频，android微信中可以屏蔽全屏视频播放完的推荐视频。但是还没办法禁止视频播放时 的全屏问题。还是得万恶的白名单。吐槽。。。。。。。。。。。。。。。。<br>更坑爹的是没有找到js触发退出全屏的方法。</p>
+<h3 id="ios黑屏问题"><a href="#ios黑屏问题" class="headerlink" title="ios黑屏问题"></a>ios黑屏问题</h3><p>ios 在播放视频时，会出现短暂的黑屏，然后正常显示。</p>
+<p>解决方法：</p>
+<p>在视频上层覆盖一个 添加一个<code>div</code>并用一张图片填充，制造播放前加载假象。然后监听事件 timeupdate ，视频播放有画面时移除这个“div块”<br><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">video.addEventListener(<span class="string">'timeupdate'</span>, <span class="function"><span class="keyword">function</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">  <span class="keyword">if</span>(video.currentTime &gt; <span class="number">0.1</span>)&#123;</span><br><span class="line">      posterImg.hidden();</span><br><span class="line">  &#125;</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure></p>
+<h3 id="Media-方法和属性"><a href="#Media-方法和属性" class="headerlink" title="Media 方法和属性"></a>Media 方法和属性</h3><p>HTMLVideoElement和HTMLAudioElement 均继承自HTMLMediaElement<br><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 媒体错误</span></span><br><span class="line">MediaObj.error; <span class="comment">//null:正常</span></span><br><span class="line">MediaObj.error.code; <span class="comment">//1.用户终止 2.网络错误 3.解码错误 4.URL无效</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//媒体当前状态</span></span><br><span class="line">MediaObj.currentSrc; <span class="comment">//返回当前资源的URL</span></span><br><span class="line">MediaObj.src = value; <span class="comment">//返回或设置当前资源的URL</span></span><br><span class="line">MediaObj.canPlayType(type); <span class="comment">//是否能播放某种格式的资源</span></span><br><span class="line">MediaObj.networkState; <span class="comment">//0.此元素未初始化 1.正常但没有使用网络 2.正在下载数据 3.没有找到资源</span></span><br><span class="line">MediaObj.load(); <span class="comment">//重新加载src指定的资源</span></span><br><span class="line">MediaObj.buffered; <span class="comment">//返回已缓冲区域，TimeRanges</span></span><br><span class="line">MediaObj.preload; <span class="comment">//none:不预载 metadata:预载资源信息 auto:</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//准备状态</span></span><br><span class="line">MediaObj.readyState;<span class="comment">//1:HAVE_NOTHING </span></span><br><span class="line">                    <span class="comment">//2:HAVE_METADATA </span></span><br><span class="line">                   <span class="comment">//3.HAVE_CURRENT_DATA </span></span><br><span class="line">                  <span class="comment">//4.HAVE_FUTURE_DATA </span></span><br><span class="line">                 <span class="comment">//5.HAVE_ENOUGH_DATA</span></span><br><span class="line">MediaObj.seeking; <span class="comment">//是否正在seeking</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">//回放状态</span></span><br><span class="line">MediaObj.currentTime = value; <span class="comment">//当前播放的位置，赋值可改变位置</span></span><br><span class="line">MediaObj.startTime; <span class="comment">//一般为0，如果为流媒体或者不从0开始的资源，则不为0</span></span><br><span class="line">MediaObj.duration; <span class="comment">//当前资源长度 流返回无限</span></span><br><span class="line">MediaObj.paused; <span class="comment">//是否暂停</span></span><br><span class="line">MediaObj.defaultPlaybackRate = value;<span class="comment">//默认的回放速度，可以设置</span></span><br><span class="line">MediaObj.playbackRate = value;<span class="comment">//当前播放速度，设置后马上改变</span></span><br><span class="line">MediaObj.played; <span class="comment">//返回已经播放的区域，TimeRanges，关于此对象见下文</span></span><br><span class="line">MediaObj.seekable; <span class="comment">//返回可以seek的区域 TimeRanges</span></span><br><span class="line">MediaObj.ended; <span class="comment">//是否结束</span></span><br><span class="line">MediaObj.autoPlay; <span class="comment">//是否自动播放</span></span><br><span class="line">MediaObj.loop; <span class="comment">//是否循环播放</span></span><br><span class="line">MediaObj.play(); <span class="comment">//播放</span></span><br><span class="line">MediaObj.pause(); <span class="comment">//暂停</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//视频控制</span></span><br><span class="line">MediaObj.controls;<span class="comment">//是否有默认控制条</span></span><br><span class="line">MediaObj.volume = value; <span class="comment">//音量</span></span><br><span class="line">MediaObj.muted = value; <span class="comment">//静音</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//TimeRanges(区域)对象</span></span><br><span class="line">TimeRanges.length; <span class="comment">//区域段数</span></span><br><span class="line">TimeRanges.start(index) <span class="comment">//第index段区域的开始位置</span></span><br><span class="line">TimeRanges.end(index) <span class="comment">//第index段区域的结束位置</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//【★★★**相关事件**★★★】</span></span><br><span class="line"><span class="comment">//事件分发</span></span><br><span class="line"><span class="keyword">var</span> eventTester = <span class="function"><span class="keyword">function</span>(<span class="params">e</span>)</span>&#123;</span><br><span class="line">    Media.addEventListener(e,<span class="function"><span class="keyword">function</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">        <span class="built_in">console</span>.log((<span class="keyword">new</span> <span class="built_in">Date</span>()).getTime(),e)</span><br><span class="line">    &#125;,<span class="literal">false</span>);</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//事件监听</span></span><br><span class="line">eventTester(<span class="string">"loadstart"</span>); <span class="comment">//客户端开始请求数据</span></span><br><span class="line">eventTester(<span class="string">"progress"</span>); <span class="comment">//客户端正在请求数据</span></span><br><span class="line">eventTester(<span class="string">"suspend"</span>); <span class="comment">//延迟下载</span></span><br><span class="line">eventTester(<span class="string">"abort"</span>); <span class="comment">//客户端主动终止下载（不是因为错误引起）</span></span><br><span class="line">eventTester(<span class="string">"loadstart"</span>); <span class="comment">//客户端开始请求数据</span></span><br><span class="line">eventTester(<span class="string">"progress"</span>); <span class="comment">//客户端正在请求数据</span></span><br><span class="line">eventTester(<span class="string">"suspend"</span>); <span class="comment">//延迟下载</span></span><br><span class="line">eventTester(<span class="string">"abort"</span>); <span class="comment">//客户端主动终止下载（不是因为错误引起），</span></span><br><span class="line">eventTester(<span class="string">"error"</span>); <span class="comment">//请求数据时遇到错误</span></span><br><span class="line">eventTester(<span class="string">"stalled"</span>); <span class="comment">//网速失速</span></span><br><span class="line">eventTester(<span class="string">"play"</span>); <span class="comment">//play()和autoplay开始播放时触发</span></span><br><span class="line">eventTester(<span class="string">"pause"</span>); <span class="comment">//pause()触发</span></span><br><span class="line">eventTester(<span class="string">"loadedmetadata"</span>); <span class="comment">//成功获取资源长度</span></span><br><span class="line">eventTester(<span class="string">"loadeddata"</span>); <span class="comment">//</span></span><br><span class="line">eventTester(<span class="string">"waiting"</span>); <span class="comment">//等待数据，并非错误</span></span><br><span class="line">eventTester(<span class="string">"playing"</span>); <span class="comment">//开始回放</span></span><br><span class="line">eventTester(<span class="string">"canplay"</span>); <span class="comment">//可以播放，但中途可能因为加载而暂停</span></span><br><span class="line">eventTester(<span class="string">"canplaythrough"</span>); <span class="comment">//可以播放，歌曲全部加载完毕</span></span><br><span class="line">eventTester(<span class="string">"seeking"</span>); <span class="comment">//寻找中</span></span><br><span class="line">eventTester(<span class="string">"seeked"</span>); <span class="comment">//寻找完毕</span></span><br><span class="line">eventTester(<span class="string">"timeupdate"</span>); <span class="comment">//播放时间改变</span></span><br><span class="line">eventTester(<span class="string">"ended"</span>); <span class="comment">//播放结束</span></span><br><span class="line">eventTester(<span class="string">"ratechange"</span>); <span class="comment">//播放速率改变</span></span><br><span class="line">eventTester(<span class="string">"durationchange"</span>); <span class="comment">//资源长度改变</span></span><br><span class="line">eventTester(<span class="string">"volumechange"</span>); <span class="comment">//音量改变</span></span><br></pre></td></tr></table></figure></p>
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">标签</span><br>
+                
+    <a class="tag tag--primary tag--small t-link" href="/all-tags/h5/">h5</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/01/22/vue-chat-room/" data-tooltip="vue 仿app聊天室" aria-label="上一篇: vue 仿app聊天室">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">上一篇</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    <a class="post-action-btn btn btn--disabled">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">下一篇</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2018/01/16/h5-video/" title="分享到 Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2018/01/16/h5-video/" title="分享到 Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2018/01/16/h5-video/" title="分享到 Google+">
+                    <i class="fab fa-google-plus" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2018/01/16/h5-video/" title="分享到 Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2018/01/16/h5-video/&amp;title=h5 video移动端填坑记" title="分享到 QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2018/01/16/h5-video/" title="分享到 Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+    </div>
+</article>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2021 Leo July. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/01/22/vue-chat-room/" data-tooltip="vue 仿app聊天室" aria-label="上一篇: vue 仿app聊天室">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">上一篇</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    <a class="post-action-btn btn btn--disabled">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">下一篇</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2018/01/16/h5-video/" title="分享到 Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2018/01/16/h5-video/" title="分享到 Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2018/01/16/h5-video/" title="分享到 Google+">
+                    <i class="fab fa-google-plus" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2018/01/16/h5-video/" title="分享到 Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2018/01/16/h5-video/&amp;title=h5 video移动端填坑记" title="分享到 QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2018/01/16/h5-video/" title="分享到 Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+    <i id="btn-close-shareoptions" class="fa fa-times"></i>
+    <ul class="share-options">
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2018/01/16/h5-video/">
+                    <i class="fab fa-facebook" aria-hidden="true"></i><span>分享到 Facebook</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2018/01/16/h5-video/">
+                    <i class="fab fa-twitter" aria-hidden="true"></i><span>分享到 Twitter</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2018/01/16/h5-video/">
+                    <i class="fab fa-google-plus" aria-hidden="true"></i><span>分享到 Google+</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2018/01/16/h5-video/">
+                    <i class="fab fa-weibo" aria-hidden="true"></i><span>分享到 Weibo</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2018/01/16/h5-video/&amp;title=h5 video移动端填坑记">
+                    <i class="fab fa-qq" aria-hidden="true"></i><span>分享到 QQ</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2018/01/16/h5-video/">
+                    <i class="fa fa-star" aria-hidden="true"></i><span>分享到 Qzone</span>
+                </a>
+            </li>
+        
+    </ul>
+</div>
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180" alt="作者的图片">
+        
+            <h4 id="about-card-name">Leo July</h4>
+        <!--  -->
+            <div id="about-card-bio">vue,weex,ES6,js,jq,html5,less,css3,git,webpack</div>
+        <!--  -->
+        <!--  -->
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br>
+                高级前端工程师
+            </div>
+        <!--  -->
+        
+    </div>
+</div>
+
+        
+            <div id="algolia-search-modal" class="modal-container">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="close-button"><i class="fa fa-times"></i></span>
+            <a href="https://algolia.com" target="_blank" rel="noopener" class="searchby-algolia text-color-light link-unstyled">
+                <span class="searchby-algolia-text text-color-light text-small">by</span>
+                <img class="searchby-algolia-logo" src="https://www.algolia.com/static_assets/images/press/downloads/algolia-light.svg">
+            </a>
+            <i class="search-icon fa fa-search"></i>
+            <form id="algolia-search-form">
+                <input type="text" id="algolia-search-input" name="search" class="form-control input--large search-input" placeholder="Search ">
+            </form>
+        </div>
+        <div class="modal-body">
+            <div class="no-result text-color-light text-center">没有找到文章</div>
+            <div class="results">
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/16/h5-video/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/01/16/h5-video/video.png" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/16/h5-video/">
+                            <h3 class="media-heading">h5 video移动端填坑记</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年1月16日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/22/vue-chat-room/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/01/22/vue-chat-room/timg.jpeg" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/22/vue-chat-room/">
+                            <h3 class="media-heading">vue 仿app聊天室</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年1月22日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/23/vue-barrage/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/01/23/vue-barrage/thumbnail.jpg" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/23/vue-barrage/">
+                            <h3 class="media-heading">vue 横屏滚动弹幕</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年1月23日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/02/23/wechat/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/02/23/wechat/show.jpg" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/02/23/wechat/">
+                            <h3 class="media-heading">微信小程序中遇到的坑和一些小技巧</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年2月23日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/js-curring/">
+                            <h3 class="media-heading">js-柯里化</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- clearReading: true
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York"
+comments: false -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/Hexo-browsersync/">
+                            <h3 class="media-heading">Hexo使用browsersync浏览器热更新</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/axios/">
+                            <h3 class="media-heading">axios 二次封装，带有静默模式</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!--
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/jsDom/">
+                            <h3 class="media-heading">jsDom is not a function</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/29/xcode-select/">
+                            <h3 class="media-heading">mac xcode-select 下载安装</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月29日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/29/ssh -T git-github-com/">
+                            <h3 class="media-heading">ssh -T git@github.com 出现Permission denied (publickey)</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月29日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+            </div>
+        </div>
+        <div class="modal-footer">
+            <p class="results-count text-medium" data-message-zero="没有找到文章" data-message-one="找到 1 篇文章" data-message-other="找到 {n} 篇文章">
+                找到 22 篇文章
+            </p>
+        </div>
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="/assets/js/script-vufjrm3fmbuttogo1hxuu0w9w0sesk5iyysjuguc2hdhufot9szxg8twijry.min.js"></script>
+<!--SCRIPTS END-->
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.14.1/moment-with-locales.min.js"></script>
+    <script src="//cdn.jsdelivr.net/algoliasearch/3/algoliasearch.min.js"></script>
+    <script>
+        var algoliaClient = algoliasearch('QDFOH7HV1P', '5132f23a0d2983147e805aa47a5df3e4');
+        var algoliaIndex = algoliaClient.initIndex('tranquilpeak');
+    </script>
+
+
+    </body>
+</html>

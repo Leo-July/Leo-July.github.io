@@ -1,0 +1,931 @@
+
+<!DOCTYPE html>
+<html lang="zh-cn">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="leo July&#39;s blog">
+    <title>微信小程序中遇到的坑和一些小技巧 - leo July&#39;s blog</title>
+    <meta name="author" content="Leo July">
+    
+        <meta name="keywords" content="javascript,hexo">
+    
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"},"articleBody":"\n原生组件导致异常样式或布局scroll-view  123456789101112&lt;view class='container'&gt;  &lt;scroll-view&gt;    &lt;view class='section'&gt;    &lt;/view&gt;    &lt;view class='section'&gt;    &lt;/view&gt;  &lt;scroll-view&gt;  &lt;view&gt;    float section  &lt;/view&gt;&lt;/view&gt;\n  1、\b当整个页面局部需要滚动时候，使用此组件，如果需要通过pageonReachBottom事件触发上啦刷新的话最好不用此组件。当然也要看具体情境了。\n  2、\bscroll-view 组件\b直接子元素设置\bbox-shadow属性不好使。经过试验和验证，发现scroll-view组件有个类似和overflow: hidden样式的设置，且去不掉。\b所以我又在scroll-view里加了个view标签\n  3、textarea 层级过高。目前微信还没有解决这个bug，自定义弹层如果内容比较丰富是不能使用cover-view标签来达到覆盖在原生组件之上的文本视图，因为其只支持嵌套 cover-view、cover-image、 button。所以只能hack实现。textarea外用view包裹，设个固定高度，当弹层展示就隐藏textarea  123&lt;view style=\"height:400rpx\"&gt;&lt;textarea v-if=\"show\" style=\"height:400\" /&gt;&lt;/view&gt;\n技巧总结Page  1、页面中\b\b声明\bdata数据，如果有些数据页面渲染中没有直接用到，只是在逻辑代码中\b作为中间量\b，完全可以直接声明给\bthis 对象。这样就省去调用this.setData()方法\n  3、获取options.scene的值需要 decodeURIComponent(options.scene)下\napp  1、下面这句是判断 userInfoReadyCallback 是否定义了，若没定义，说明其在Page.onLoad 定义userInfoReadCallback 之前运行的，说明app.globalInfo.userInfo已经包含了用户登录的信息了。\n 若定义了，说明在Page.onLoad比该语句返回的success结果之前已经运行了。此时的app.globalInfo.userInfo的值是空的，所以还需要再重新对其进行赋值。  1234this.globalData.userInfo = res.data.dataif (this.userInfoReadyCallback) &#123;  this.userInfoReadyCallback(res.data.data)&#125;\n  2、当定义初始的一个全局变量是Boolean值并为false或者null时，只要没有给此变量\b再次赋值，调用此全局变量失败  123456789101112\bglobalData:&#123;  prop1: null,  prop2: false&#125;// 调用\bif(app.globalData.prop1)&#123;  console.log('success')&#125; else &#123;  app.prop1ReadyCallback = () =&gt; &#123;    console.log('success')  &#125;&#125;\n  如果不想初始化，就可以调用全局变量,可以把全局变量给以字符串初始值，就可以正常调用了  123456789101112131415globalData:&#123;  prop2: 'false'&#125;// 调用\bif(app.globalData.prop1)&#123;  if(!!app.globalData.prop1)&#123;  &#125;&#125; else &#123;  app.prop1ReadyCallback = () =&gt; &#123;    if(!!app.globalData.prop1)&#123;        &#125;  &#125;&#125;\n自定义组件1、 调用自定义组件在父组件中加类名，写的样式除了可继承属性外，不能作用自定组将\n2、 自定义组件中使用`catchtap`绑定事件，也可以取消事件冒泡，即不调用父组件中的事件\n3、 `hidden` 直接条件渲染组件标签无效果，只能使用`view`包裹自定义组件的标签，并把`hidden`放在`view`上\n方法封装  1、封装登录reLogin方法  123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172  /** * 重新登录 * params *       callback    登录成功后的回调函数 */reLogin(&#123; callback = () =&gt; &#123; &#125; &#125; = &#123;&#125;) &#123;  // app.globalData.loging = true  wx.showLoading(&#123;    title: '加载中'  &#125;)  wx.login(&#123;    success: res =&gt; &#123;      // 发送 res.code 到后台换取 openId, sessionKey, unionId      const code = res.code      wx.getUserInfo(&#123;        success: res =&gt; &#123;          // 可以将 res 发送给后台解码出 unionId          const userInfo = res.userInfo          const encryptedData = res.encryptedData          const iv = res.iv          // 由于 getUserInfo 是网络请求，可能会在 Page.onLoad 之后才返回          // 所以此处加入 callback 以防止这种情况          wx.request(&#123;            url: 'https:****login',            header: &#123;              'content-type': 'application/json', // 默认值              'x-wx-code': code,              'x-wx-encrypted-data': encryptedData,              'x-wx-iv': iv,              'x-wx-skey': ''            &#125;,            success: (res) =&gt; &#123;              wx.hideLoading()              wx.setStorage(&#123;                key: \"skey\",                data: res.data.data.SKey,                success: () =&gt; &#123;                  callback()                &#125;,                fail: () =&gt; &#123;                  console.log('set fail')                &#125;              &#125;)              wx.setStorage(&#123;                key: \"userInfo\",                data: res.data.data,                success: () =&gt; &#123;                &#125;,                fail: () =&gt; &#123;                  console.log('set fail')                &#125;              &#125;)            &#125;,            fail: function (err) &#123;              wx.hideLoading()              wx.showToast(&#123;                title: '貌似断网了，请检查您的网络~',                icon: 'none',                duration: 2000              &#125;)            &#125;,            complete: () =&gt; &#123;            &#125;          &#125;)        &#125;      &#125;)    &#125;  &#125;)&#125;,\n  123456789101112// 如果想每次进入小程序就从新\b登录，拉取用户信息// 只需要在 app.js \b同步清除 skey 缓存数据App(&#123;  onLaunch: function (options) &#123;    try &#123;      wx.removeStorageSync('skey')    &#125; catch (e) &#123;      // Do something when catch error    &#125;  &#125;,)&#125;\n  2、封装\bwx.request为fetch 异步请求接口  1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950515253545556575859606162636465666768697071727374757677787980818283848586878889909192  module.exports = &#123;    /**   * 请求接口的公共方法   *   * @params      *           app      app 对象   *           url      接口地址   *           header   请求头   *           data     参数   *           method   请求方法   *           success  成功回调函数   *           fail     失败回调   *           complete 完成回调   */fetch(...rest) &#123;    // 定义单个请求方法    const request = (skey, index,&#123; url = '', method = 'GET', header = &#123;&#125;, data = '', success = () =&gt; &#123; &#125;, fail = () =&gt; &#123; &#125;, complete = () =&gt; &#123; &#125;, loading = true &#125; = &#123;&#125;) =&gt; &#123;      // 是否显示loading       if (loading) &#123;        wx.showLoading(&#123;          title: '加载中',          mask: true,        &#125;)      &#125;      wx.request(&#123;        url: fetchDomain + url,        header: &#123;          ...header,          'x-wx-skey': skey        &#125;,        method: method,        data: data,        success: res =&gt; &#123;          const data = res.data          wx.hideLoading()          switch (data.code) &#123;            case 0:              success(data)              break            case -2: // 会话过期              if(index == 0)&#123;// 如果是异步请求多个接口，只执行一次回调                console.log(index)                this.reLogin(&#123; callback: () =&gt; &#123; this.fetch(...rest) &#125; &#125;)              &#125;            default:              wx.showToast(&#123;                title: data.message,                icon: 'none',                duration: 2000              &#125;)          &#125;        &#125;,        fail: res =&gt; &#123;          wx.hideLoading()          wx.showToast(&#123;            title: '貌似断网了，请检查您的网络～',            icon: 'none',            duration: 2000          &#125;)          fail(res)        &#125;,        complete: res =&gt; &#123;          complete(res)        &#125;      &#125;)    &#125;    // 存在skey值采取请求接口    const checkSkey = () =&gt; wx.getStorage(&#123;      key: 'skey',      success: res =&gt; &#123;        rest.forEach((value,index) =&gt; &#123;          request(res.data, index, value)        &#125;)      &#125;,      fail: () =&gt; &#123;        console.log('fail')        this.reLogin(&#123; callback: () =&gt; &#123; this.fetch(...rest) &#125; &#125;)      &#125;    &#125;)    // 是否有网络连接    this.isConnected(&#123;      callback: () =&gt; &#123;        checkSkey()      &#125;    &#125;)  &#125;,\n  这里说一下，为什么封装为可以异步请求接口，因为有时候页面初始渲染需要请求至少\b2个以上的接口，且如果接口传入参数中\b用到了app globalData数据，\b并把判断globalData数据是否可用封装在了fetch方法里，就会导致只有最后一个请求的接口，请求成功。也可以避免\b会话过期，重复\breLogin导致\b循环会话过期reLogin的问题\n3、获取scene中参数方法1234567891011121314151617/** * 获取scene 中的参数 * @param    *          scene  onLoad.options.scene */getSceneParams(scene) &#123;  if (!scene.includes('&amp;')) &#123;    return false  &#125;  let arry = scene.split('&amp;')  let query = &#123;&#125;  arry.forEach(item =&gt; &#123;    const temp = item.split('=')    query[temp[0]] = temp[1] || ''  &#125;)  return query&#125;\n4、判断app globalData 数据是否可用，并执行相应的回调函数12345678910111213141516171819202122/** * 判断是否能够使用app全局变量 *  * @params *            key             全局变量 *            existCallback   全局变量存在  callback 之前回调函数 *            inExistCallback 全局变量不存在 callback 之前回调函数 *            callback        共同回调函数 *             */useGlobalData(&#123; key = '', callback = () =&gt; &#123; &#125;, existCallback = () =&gt; &#123; &#125;, inExistCallback = () =&gt; &#123; &#125; &#125; = &#123;&#125;) &#123;  const keyReadyCallback = `$&#123;key&#125;ReadyCallback`  if (app.globalData[key]) &#123;    existCallback(app.globalData[key])    callback(app.globalData[key])  &#125; else &#123;    app[keyReadyCallback] = () =&gt; &#123;      inExistCallback(app.globalData[key])      callback(app.globalData[key])    &#125;  &#125;&#125;\n5、 当无网络连接状态提示  12345678910111213141516171819202122232425  /** * 无网络连接状态提示 */isConnected(&#123; callback = () =&gt; &#123; &#125; &#125; = &#123;&#125;) &#123;  wx.getNetworkType(&#123;    success: function (res) &#123;      // 返回网络类型, 有效值：      // wifi/2g/3g/4g/unknown(Android下不常见的网络类型)/none(无网络)      var networkType = res.networkType      if (networkType == 'none') &#123;        wx.hideLoading()        wx.showToast(&#123;          title: '当前无网络连接，请查看您的网络设置~',          icon: 'none',          duration: 2000        &#125;)      &#125; else &#123;        callback()      &#125;    &#125;,    fail: () =&gt; &#123;    &#125;  &#125;)&#125;\n自定义组件  1、获取对外属性properties的值，在created周期获取不到，需要在attached周期函数中获取  123attached()&#123;  console.log(this.data.dataName)&#125;\n2、样式绑定12&lt;!-- 组件 --&gt;&lt;view style='&#123;&#123;style1&#125;&#125; &#123;&#123;style2&#125;&#125;'&gt;&lt;/view&gt;\n12345678910111213// jsComponent(&#123;  properties: &#123;    style1:&#123;      type: String,      value: ''    &#125;,    style2:&#123;      type: String,      value: ''    &#125;  &#125;&#125;)\n12&lt;!-- 引用 --&gt;&lt;component head-style='width: 160rpx;height: 160rpx;'&gt;&lt;/component&gt;\n3、绑定class1&lt;view class='class1  class2 &#123;&#123;triggle ? \"classTriggle\" : \"\"&#125;&#125;'&gt;&lt;/view&gt;\n4、setData一个对象中一个属性的值123456789101112131415161718192021222324this.setData(&#123;  ['obj.propName']: 'new value'&#125;)const name = 'propName'// 也可以是表达式的形式this.setData(&#123;  [`obj.$&#123;name&#125;`]: 'new value'&#125;)Page(&#123;  data:&#123;    userInfo:&#123;      nickName: '',      age: 16    &#125;  &#125;,  setObjectProp () &#123;    this.setData(&#123;      ['userInfo.nickName']: 'new name'    &#125;)  &#125;&#125;)\n自定义封装video组件12345678910&lt;!-- component 自定义组件dom结构 --&gt;&lt;view class='video-wrapper' bindtap='onPlay'&gt;  &lt;video src='&#123;&#123;src&#125;&#125;' class='video' id=\"myVideo\"       bindplay='play'     bindpause='pause'       bindended='ended'       bindfullscreenchange='fullscreenchange'&gt;  &lt;/video&gt;  &lt;view class='icon'&gt;&lt;/view&gt;&lt;/view&gt;\n12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849505152//jsComponent(&#123;  properties: &#123;    src: &#123; // 视频地址      type: String,      value: ''    &#125;,  &#125;,  data: &#123;  &#125;,  methods: &#123;    play() &#123;      this.triggerEvent('myPlay', &#123;&#125;) // 触发\b引用组件 当play时的事件    &#125;,    pause() &#123;      this.triggerEvent('myPause', &#123;&#125;)    &#125;,    ended() &#123;      this.triggerEvent('myEnded', &#123;&#125;)    &#125;,    /**// 视频播放**/    onPlay() &#123;      this.videoContext.play()      this.requestFullScreen()    &#125;,    /**     * 视频全屏状态改变     */    fullscreenchange(event) &#123;      const fullScreen = event.detail.fullScreen      if (!fullScreen) &#123;        this.videoContext.pause()      &#125;    &#125;,    exitFullScreen()&#123;      this.videoContext.exitFullScreen()    &#125;,    requestFullScreen() &#123;      this.videoContext.requestFullScreen()    &#125;  &#125;,  ready() &#123;    // 第一个参数必须是 id     // 自定义组件中使用video标签必须\b加第二个参数 this    this.videoContext = wx.createVideoContext('myVideo',this)  &#125;,&#125;)\n使用组件123&lt;my-video src='video.src'  bind:myPlay='play'&gt;&lt;/my-video&gt;\n12345Page(&#123;  play () &#123;    console.log('myPlay')  &#125;&#125;)\n遇到其他的坑  1、获取分享二维码  这里前端不能直接请求api给的链接，因为小程序请求接口域名限制，只能通过后台请求再返给前端。且原始返回的图片好像是二进制码，需要后台转换成base64格式。如果后台返回字符串没有显示出图片，很可能是少拼接东西,前端/后端需做一下处理  1'data:image/png;base64,' + res.data.base64\n  2、去掉button组件的border样式，小程序使用::after实现的  123button::after&#123;  display: none;&#125;\nbug 1、textarea show-confirm-bar=&#39;true&#39; 无效。 123&lt;textarea show-confirm-bar=''&gt;&lt;/textarea&gt;// 或者&lt;textarea show-confirm-bar='&#123;&#123;falseVar&#125;&#125;'&gt;&lt;/textarea&gt;\n 2、wx:if和wx:else 搭配 123456789&lt;view wx:if='&#123;&#123;false&#125;&#125;' wx:for='&#123;&#123;&#125;&#125;'&gt;&lt;/view&gt;&lt;view wx:else&gt;&lt;/view&gt;&lt;!-- 此时就会报错 --&gt;&lt;!-- 改为 --&gt;&lt;block wx:if='&#123;&#123;false&#125;&#125;'&gt;  &lt;view wx:for&gt;&lt;/view&gt;&lt;/block&gt;&lt;view wx:else&gt;&lt;/view&gt;\n 3、request请求接口安卓手机有时候会返回String而不是json,需要通过trim()去掉bom头 1234567//  加个判断let data = nullif(typeof res.data === 'string')&#123;  data = res.data.trim()&#125;eles&#123;  data = res.data&#125;\n 4、\b页面循环一个数组动态头部插入自定义组件，且\b自定义组件（父组件）又引用了另一个自定义组件（子组件），\b子组件用到了父组件传递的数据，从而\b导致子组件渲染数据有问题，如下1234&lt;!-- page --&gt;&lt;block wx:for='&#123;&#123;array&#125;&#125;'&gt;  &lt;component prop-data='&#123;&#123;item&#125;&#125;'&gt;&lt;/component&gt;&lt;/block&gt;\n父组件123&lt;view&gt;  &lt;component-sub prop-data-sub='&#123;&#123;propData.content&#125;&#125;'&gt;&lt;/component-sub&gt;&lt;/view&gt;\n12345678910111213Component(  properties:&#123;    propData:&#123;      type: Object,      value: &#123;&#125;    &#125;,        &#125;,  attached()&#123;    console.log(this.data.propData)    // 如果是头部插入数据，动态生成的组件\b，在js中获取的数据一直是\b调用此组件数组的最后一条数据。从而导致传递给其子组件的数据有问题    // 如果没有掉子组件，并且js中没有处理数据后渲染，直接展示数据，渲染是没问题的  &#125;)\nhack 解决办法，利用setData的回调函数12345678910insertHead ()&#123;  let newArray = [newData, ...this.data.array] // 暂存头部插入后的数据  this.setData(&#123;    array: [],// 先置空\b数组  &#125;,() =&gt;&#123;// 设置成功后回调，再把头部插入\b数据后数组复制给array      this.setData(&#123;        array: newArray      &#125;)  &#125;)&#125;\n源码地址\n持续更新中。。。","dateCreated":"2018-02-23T14:31:46+08:00","dateModified":"2020-02-18T17:21:36+08:00","datePublished":"2018-02-23T14:31:46+08:00","description":"","headline":"微信小程序中遇到的坑和一些小技巧","image":["show.jpg","cover.png"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://leo-july.github.io/2018/02/23/wechat/"},"publisher":{"@type":"Organization","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180","logo":{"@type":"ImageObject","url":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"}},"url":"https://leo-july.github.io/2018/02/23/wechat/","keywords":"小程序","thumbnailUrl":"show.jpg"}</script>
+    <meta name="keywords" content="javascript,hexo">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="微信小程序中遇到的坑和一些小技巧">
+<meta property="og:url" content="https://leo-july.github.io/2018/02/23/wechat/index.html">
+<meta property="og:site_name" content="leo July&#39;s blog">
+<meta property="og:locale" content="zh-cn">
+<meta property="og:updated_time" content="2020-02-18T09:21:36.631Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="微信小程序中遇到的坑和一些小技巧">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"/>
+    
+    
+        <meta property="og:image" content="https://leo-july.github.io/2018/02/23/wechat/show.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://leo-july.github.io/2018/02/23/wechat/show.jpg" />
+    
+    
+        <meta property="og:image" content="https://leo-july.github.io/2018/02/23/wechat/cover.png"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://leo-july.github.io/2018/02/23/wechat/cover.png" />
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="/assets/css/style-du2xmrqdqrl2ollgeiw050kpl6l4nbyz7bumjuurjgsxyopifvukebxc9lqe.min.css">
+    <!--STYLES END-->
+    
+
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">leo July&#39;s blog</a>
+    </div>
+    
+        
+            <a class="header-right-icon open-algolia-search" href="#search">
+        
+        
+            <i class="search fa-lg"></i>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180" alt="作者的图片">
+                </a>
+                <h4 class="sidebar-profile-name">Leo July</h4>
+                <!--  -->
+                    <h5 class="sidebar-profile-bio">vue,weex,ES6,js,jq,html5,less,css3,git,webpack</h5>
+                <!--  -->
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/ " title="首页">
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">首页</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-categories" title="分类">
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">分类</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-tags" title="标签">
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">标签</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-archives" title="归档">
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">归档</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link open-algolia-search" href="#search" title="搜索">
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">搜索</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="#about" title="关于">
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">关于</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://github.com/Leo-July" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="mailto:15563861385@163.com" target="_blank" rel="noopener" title="Emial">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Emial</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://xuebin.me" target="_blank" rel="noopener" title="xuebin.me">
+                    
+                        <i class="sidebar-button-icon fa fa-link" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">xuebin.me</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://zhangmiao.cc/" target="_blank" rel="noopener" title="zhangmiao.cc">
+                    
+                        <i class="sidebar-button-icon fa fa-link" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">zhangmiao.cc</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--partial" style="background-image:url('/2018/02/23/wechat/cover.png');" data-behavior="4">
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaOut
+                        hasCoverCaption">
+                
+<article class="post">
+    
+        <span class="post-header-cover-caption caption">A beautiful sunrise</span>
+    
+    
+        <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            微信小程序中遇到的坑和一些小技巧
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2018-02-23T14:31:46+08:00">
+	
+		    2月 23, 2018
+    	
+    </time>
+    
+        <span>发布在 </span>
+        
+    <a class="category-link" href="/all-categories/小程序/">小程序</a>
+
+
+    
+</div>
+
+    
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<h2 id="原生组件导致异常样式或布局"><a href="#原生组件导致异常样式或布局" class="headerlink" title="原生组件导致异常样式或布局"></a>原生组件导致异常样式或布局</h2><h3 id="scroll-view"><a href="#scroll-view" class="headerlink" title="scroll-view"></a>scroll-view</h3>  <figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">view</span> <span class="attr">class</span>=<span class="string">'container'</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">scroll-view</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">view</span> <span class="attr">class</span>=<span class="string">'section'</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">view</span>&gt;</span></span><br><span class="line"></span><br><span class="line">    <span class="tag">&lt;<span class="name">view</span> <span class="attr">class</span>=<span class="string">'section'</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">view</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">scroll-view</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">view</span>&gt;</span></span><br><span class="line">    float section</span><br><span class="line">  <span class="tag">&lt;/<span class="name">view</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">view</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>  1、当整个页面局部需要滚动时候，使用此组件，如果需要通过page<code>onReachBottom</code>事件触发上啦刷新的话最好不用此组件。当然也要看具体情境了。</p>
+<p>  2、<code>scroll-view</code> 组件直接子元素设置<code>box-shadow</code>属性不好使。经过试验和验证，发现<code>scroll-view</code>组件有个类似和<code>overflow: hidden</code>样式的设置，且去不掉。所以我又在<code>scroll-view</code>里加了个<code>view</code>标签</p>
+<p>  3、<code>textarea</code> 层级过高。目前微信还没有解决这个bug，自定义弹层如果内容比较丰富是不能使用<code>cover-view</code>标签来达到覆盖在原生组件之上的文本视图，因为其只支持嵌套 cover-view、cover-image、 button。所以只能hack实现。<code>textarea</code>外用<code>view</code>包裹，设个固定高度，当弹层展示就隐藏<code>textarea</code><br>  <figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">view</span> <span class="attr">style</span>=<span class="string">"height:400rpx"</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">textarea</span> <span class="attr">v-if</span>=<span class="string">"show"</span> <span class="attr">style</span>=<span class="string">"height:400"</span> /&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">view</span>&gt;</span></span><br></pre></td></tr></table></figure></p>
+<h2 id="技巧总结"><a href="#技巧总结" class="headerlink" title="技巧总结"></a>技巧总结</h2><h3 id="Page"><a href="#Page" class="headerlink" title="Page"></a>Page</h3><p>  1、页面中声明<code>data</code>数据，如果有些数据页面渲染中没有直接用到，只是在逻辑代码中作为中间量，完全可以直接声明给<code>this</code> 对象。这样就省去调用<code>this.setData()</code>方法</p>
+<p>  3、获取<code>options.scene</code>的值需要 <code>decodeURIComponent(options.scene)</code>下</p>
+<h3 id="app"><a href="#app" class="headerlink" title="app"></a>app</h3><p>  1、下面这句是判断 userInfoReadyCallback 是否定义了，若没定义，说明其在Page.onLoad 定义userInfoReadCallback 之前运行的，说明app.globalInfo.userInfo已经包含了用户登录的信息了。</p>
+<p> 若定义了，说明在Page.onLoad比该语句返回的success结果之前已经运行了。此时的app.globalInfo.userInfo的值是空的，所以还需要再重新对其进行赋值。<br>  <figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">this</span>.globalData.userInfo = res.data.data</span><br><span class="line"><span class="keyword">if</span> (<span class="keyword">this</span>.userInfoReadyCallback) &#123;</span><br><span class="line">  <span class="keyword">this</span>.userInfoReadyCallback(res.data.data)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>  2、当定义初始的一个全局变量是<code>Boolean</code>值并为<code>false</code>或者<code>null</code>时，只要没有给此变量再次赋值，调用此全局变量失败<br>  <figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">globalData:&#123;</span><br><span class="line">  prop1: <span class="literal">null</span>,</span><br><span class="line">  prop2: <span class="literal">false</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 调用</span></span><br><span class="line"><span class="keyword">if</span>(app.globalData.prop1)&#123;</span><br><span class="line">  <span class="built_in">console</span>.log(<span class="string">'success'</span>)</span><br><span class="line">&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">  app.prop1ReadyCallback = <span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">    <span class="built_in">console</span>.log(<span class="string">'success'</span>)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>  如果不想初始化，就可以调用全局变量,可以把全局变量给以字符串初始值，就可以正常调用了<br>  <figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">globalData:&#123;</span><br><span class="line">  prop2: <span class="string">'false'</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 调用</span></span><br><span class="line"><span class="keyword">if</span>(app.globalData.prop1)&#123;</span><br><span class="line">  <span class="keyword">if</span>(!!app.globalData.prop1)&#123;</span><br><span class="line"></span><br><span class="line">  &#125;</span><br><span class="line">&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">  app.prop1ReadyCallback = <span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">    <span class="keyword">if</span>(!!app.globalData.prop1)&#123;</span><br><span class="line">    </span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h3 id="自定义组件"><a href="#自定义组件" class="headerlink" title="自定义组件"></a>自定义组件</h3><pre><code>1、 调用自定义组件在父组件中加类名，写的样式除了可继承属性外，不能作用自定组将
+2、 自定义组件中使用`catchtap`绑定事件，也可以取消事件冒泡，即不调用父组件中的事件
+3、 `hidden` 直接条件渲染组件标签无效果，只能使用`view`包裹自定义组件的标签，并把`hidden`放在`view`上
+</code></pre><h2 id="方法封装"><a href="#方法封装" class="headerlink" title="方法封装"></a>方法封装</h2><p>  1、封装登录<code>reLogin</code>方法<br>  <figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br></pre></td><td class="code"><pre><span class="line">  <span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 重新登录</span></span><br><span class="line"><span class="comment"> * params</span></span><br><span class="line"><span class="comment"> *       callback    登录成功后的回调函数</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line">reLogin(&#123; callback = <span class="function"><span class="params">()</span> =&gt;</span> &#123; &#125; &#125; = &#123;&#125;) &#123;</span><br><span class="line">  <span class="comment">// app.globalData.loging = true</span></span><br><span class="line">  wx.showLoading(&#123;</span><br><span class="line">    title: <span class="string">'加载中'</span></span><br><span class="line">  &#125;)</span><br><span class="line">  wx.login(&#123;</span><br><span class="line">    success: <span class="function"><span class="params">res</span> =&gt;</span> &#123;</span><br><span class="line">      <span class="comment">// 发送 res.code 到后台换取 openId, sessionKey, unionId</span></span><br><span class="line">      <span class="keyword">const</span> code = res.code</span><br><span class="line">      wx.getUserInfo(&#123;</span><br><span class="line">        success: <span class="function"><span class="params">res</span> =&gt;</span> &#123;</span><br><span class="line">          <span class="comment">// 可以将 res 发送给后台解码出 unionId</span></span><br><span class="line">          <span class="keyword">const</span> userInfo = res.userInfo</span><br><span class="line">          <span class="keyword">const</span> encryptedData = res.encryptedData</span><br><span class="line">          <span class="keyword">const</span> iv = res.iv</span><br><span class="line">          <span class="comment">// 由于 getUserInfo 是网络请求，可能会在 Page.onLoad 之后才返回</span></span><br><span class="line">          <span class="comment">// 所以此处加入 callback 以防止这种情况</span></span><br><span class="line"></span><br><span class="line">          wx.request(&#123;</span><br><span class="line">            url: <span class="string">'https:****login'</span>,</span><br><span class="line">            header: &#123;</span><br><span class="line">              <span class="string">'content-type'</span>: <span class="string">'application/json'</span>, <span class="comment">// 默认值</span></span><br><span class="line">              <span class="string">'x-wx-code'</span>: code,</span><br><span class="line">              <span class="string">'x-wx-encrypted-data'</span>: encryptedData,</span><br><span class="line">              <span class="string">'x-wx-iv'</span>: iv,</span><br><span class="line">              <span class="string">'x-wx-skey'</span>: <span class="string">''</span></span><br><span class="line">            &#125;,</span><br><span class="line">            success: <span class="function">(<span class="params">res</span>) =&gt;</span> &#123;</span><br><span class="line">              wx.hideLoading()</span><br><span class="line"></span><br><span class="line">              wx.setStorage(&#123;</span><br><span class="line">                key: <span class="string">"skey"</span>,</span><br><span class="line">                data: res.data.data.SKey,</span><br><span class="line">                success: <span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">                  callback()</span><br><span class="line">                &#125;,</span><br><span class="line">                fail: <span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">                  <span class="built_in">console</span>.log(<span class="string">'set fail'</span>)</span><br><span class="line">                &#125;</span><br><span class="line">              &#125;)</span><br><span class="line"></span><br><span class="line">              wx.setStorage(&#123;</span><br><span class="line">                key: <span class="string">"userInfo"</span>,</span><br><span class="line">                data: res.data.data,</span><br><span class="line">                success: <span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">                &#125;,</span><br><span class="line">                fail: <span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">                  <span class="built_in">console</span>.log(<span class="string">'set fail'</span>)</span><br><span class="line">                &#125;</span><br><span class="line">              &#125;)</span><br><span class="line">            &#125;,</span><br><span class="line">            fail: <span class="function"><span class="keyword">function</span> (<span class="params">err</span>) </span>&#123;</span><br><span class="line">              wx.hideLoading()</span><br><span class="line">              wx.showToast(&#123;</span><br><span class="line">                title: <span class="string">'貌似断网了，请检查您的网络~'</span>,</span><br><span class="line">                icon: <span class="string">'none'</span>,</span><br><span class="line">                duration: <span class="number">2000</span></span><br><span class="line">              &#125;)</span><br><span class="line">            &#125;,</span><br><span class="line">            complete: <span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">            &#125;</span><br><span class="line">          &#125;)</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;)</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;)</span><br><span class="line">&#125;,</span><br></pre></td></tr></table></figure></p>
+  <figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 如果想每次进入小程序就从新登录，拉取用户信息</span></span><br><span class="line"><span class="comment">// 只需要在 app.js 同步清除 skey 缓存数据</span></span><br><span class="line">App(&#123;</span><br><span class="line">  onLaunch: <span class="function"><span class="keyword">function</span> (<span class="params">options</span>) </span>&#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      wx.removeStorageSync(<span class="string">'skey'</span>)</span><br><span class="line">    &#125; <span class="keyword">catch</span> (e) &#123;</span><br><span class="line">      <span class="comment">// Do something when catch error</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">  &#125;,</span><br><span class="line">)&#125;</span><br></pre></td></tr></table></figure>
+<p>  2、封装<code>wx.request</code>为fetch 异步请求接口<br>  <figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br></pre></td><td class="code"><pre><span class="line">  <span class="built_in">module</span>.exports = &#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">   * 请求接口的公共方法</span></span><br><span class="line"><span class="comment">   *</span></span><br><span class="line"><span class="comment">   * @params   </span></span><br><span class="line"><span class="comment">   *           app      app 对象</span></span><br><span class="line"><span class="comment">   *           url      接口地址</span></span><br><span class="line"><span class="comment">   *           header   请求头</span></span><br><span class="line"><span class="comment">   *           data     参数</span></span><br><span class="line"><span class="comment">   *           method   请求方法</span></span><br><span class="line"><span class="comment">   *           success  成功回调函数</span></span><br><span class="line"><span class="comment">   *           fail     失败回调</span></span><br><span class="line"><span class="comment">   *           complete 完成回调</span></span><br><span class="line"><span class="comment">   */</span></span><br><span class="line">fetch(...rest) &#123;</span><br><span class="line">    <span class="comment">// 定义单个请求方法</span></span><br><span class="line">    <span class="keyword">const</span> request = <span class="function">(<span class="params">skey, index,&#123; url = <span class="string">''</span>, method = <span class="string">'GET'</span>, header = &#123;&#125;, data = <span class="string">''</span>, success = (</span>) =&gt;</span> &#123; &#125;, fail = <span class="function"><span class="params">()</span> =&gt;</span> &#123; &#125;, complete = <span class="function"><span class="params">()</span> =&gt;</span> &#123; &#125;, loading = <span class="literal">true</span> &#125; = &#123;&#125;) =&gt; &#123;</span><br><span class="line"></span><br><span class="line">      <span class="comment">// 是否显示loading </span></span><br><span class="line">      <span class="keyword">if</span> (loading) &#123;</span><br><span class="line">        wx.showLoading(&#123;</span><br><span class="line">          title: <span class="string">'加载中'</span>,</span><br><span class="line">          mask: <span class="literal">true</span>,</span><br><span class="line">        &#125;)</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      wx.request(&#123;</span><br><span class="line">        url: fetchDomain + url,</span><br><span class="line">        header: &#123;</span><br><span class="line">          ...header,</span><br><span class="line">          <span class="string">'x-wx-skey'</span>: skey</span><br><span class="line">        &#125;,</span><br><span class="line">        method: method,</span><br><span class="line">        data: data,</span><br><span class="line">        success: <span class="function"><span class="params">res</span> =&gt;</span> &#123;</span><br><span class="line">          <span class="keyword">const</span> data = res.data</span><br><span class="line">          wx.hideLoading()</span><br><span class="line">          <span class="keyword">switch</span> (data.code) &#123;</span><br><span class="line">            <span class="keyword">case</span> <span class="number">0</span>:</span><br><span class="line">              success(data)</span><br><span class="line">              <span class="keyword">break</span></span><br><span class="line">            <span class="keyword">case</span> <span class="number">-2</span>: <span class="comment">// 会话过期</span></span><br><span class="line">              <span class="keyword">if</span>(index == <span class="number">0</span>)&#123;<span class="comment">// 如果是异步请求多个接口，只执行一次回调</span></span><br><span class="line">                <span class="built_in">console</span>.log(index)</span><br><span class="line">                <span class="keyword">this</span>.reLogin(&#123; <span class="attr">callback</span>: <span class="function"><span class="params">()</span> =&gt;</span> &#123; <span class="keyword">this</span>.fetch(...rest) &#125; &#125;)</span><br><span class="line">              &#125;</span><br><span class="line">            <span class="keyword">default</span>:</span><br><span class="line">              wx.showToast(&#123;</span><br><span class="line">                title: data.message,</span><br><span class="line">                icon: <span class="string">'none'</span>,</span><br><span class="line">                duration: <span class="number">2000</span></span><br><span class="line">              &#125;)</span><br><span class="line">          &#125;</span><br><span class="line">        &#125;,</span><br><span class="line">        fail: <span class="function"><span class="params">res</span> =&gt;</span> &#123;</span><br><span class="line">          wx.hideLoading()</span><br><span class="line">          wx.showToast(&#123;</span><br><span class="line">            title: <span class="string">'貌似断网了，请检查您的网络～'</span>,</span><br><span class="line">            icon: <span class="string">'none'</span>,</span><br><span class="line">            duration: <span class="number">2000</span></span><br><span class="line">          &#125;)</span><br><span class="line">          fail(res)</span><br><span class="line">        &#125;,</span><br><span class="line">        complete: <span class="function"><span class="params">res</span> =&gt;</span> &#123;</span><br><span class="line">          complete(res)</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 存在skey值采取请求接口</span></span><br><span class="line">    <span class="keyword">const</span> checkSkey = <span class="function"><span class="params">()</span> =&gt;</span> wx.getStorage(&#123;</span><br><span class="line">      key: <span class="string">'skey'</span>,</span><br><span class="line">      success: <span class="function"><span class="params">res</span> =&gt;</span> &#123;</span><br><span class="line"></span><br><span class="line">        rest.forEach(<span class="function">(<span class="params">value,index</span>) =&gt;</span> &#123;</span><br><span class="line">          request(res.data, index, value)</span><br><span class="line">        &#125;)</span><br><span class="line"></span><br><span class="line">      &#125;,</span><br><span class="line">      fail: <span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">        <span class="built_in">console</span>.log(<span class="string">'fail'</span>)</span><br><span class="line">        <span class="keyword">this</span>.reLogin(&#123; <span class="attr">callback</span>: <span class="function"><span class="params">()</span> =&gt;</span> &#123; <span class="keyword">this</span>.fetch(...rest) &#125; &#125;)</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 是否有网络连接</span></span><br><span class="line">    <span class="keyword">this</span>.isConnected(&#123;</span><br><span class="line">      callback: <span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">        checkSkey()</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;)</span><br><span class="line">  &#125;,</span><br></pre></td></tr></table></figure></p>
+<p>  这里说一下，为什么封装为可以异步请求接口，因为有时候页面初始渲染需要请求至少2个以上的接口，且如果接口传入参数中用到了app globalData数据，并把判断globalData数据是否可用封装在了fetch方法里，就会导致只有最后一个请求的接口，请求成功。也可以避免会话过期，重复reLogin导致循环会话过期reLogin的问题</p>
+<p>3、获取scene中参数方法<br><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 获取scene 中的参数</span></span><br><span class="line"><span class="comment"> * @param   </span></span><br><span class="line"><span class="comment"> *          scene  onLoad.options.scene</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line">getSceneParams(scene) &#123;</span><br><span class="line">  <span class="keyword">if</span> (!scene.includes(<span class="string">'&amp;'</span>)) &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">false</span></span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">let</span> arry = scene.split(<span class="string">'&amp;'</span>)</span><br><span class="line">  <span class="keyword">let</span> query = &#123;&#125;</span><br><span class="line">  arry.forEach(<span class="function"><span class="params">item</span> =&gt;</span> &#123;</span><br><span class="line">    <span class="keyword">const</span> temp = item.split(<span class="string">'='</span>)</span><br><span class="line">    query[temp[<span class="number">0</span>]] = temp[<span class="number">1</span>] || <span class="string">''</span></span><br><span class="line">  &#125;)</span><br><span class="line">  <span class="keyword">return</span> query</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>4、判断app globalData 数据是否可用，并执行相应的回调函数<br><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 判断是否能够使用app全局变量</span></span><br><span class="line"><span class="comment"> * </span></span><br><span class="line"><span class="comment"> * @params</span></span><br><span class="line"><span class="comment"> *            key             全局变量</span></span><br><span class="line"><span class="comment"> *            existCallback   全局变量存在  callback 之前回调函数</span></span><br><span class="line"><span class="comment"> *            inExistCallback 全局变量不存在 callback 之前回调函数</span></span><br><span class="line"><span class="comment"> *            callback        共同回调函数</span></span><br><span class="line"><span class="comment"> *            </span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line">useGlobalData(&#123; key = <span class="string">''</span>, callback = <span class="function"><span class="params">()</span> =&gt;</span> &#123; &#125;, existCallback = <span class="function"><span class="params">()</span> =&gt;</span> &#123; &#125;, inExistCallback = <span class="function"><span class="params">()</span> =&gt;</span> &#123; &#125; &#125; = &#123;&#125;) &#123;</span><br><span class="line">  <span class="keyword">const</span> keyReadyCallback = <span class="string">`<span class="subst">$&#123;key&#125;</span>ReadyCallback`</span></span><br><span class="line">  <span class="keyword">if</span> (app.globalData[key]) &#123;</span><br><span class="line">    existCallback(app.globalData[key])</span><br><span class="line">    callback(app.globalData[key])</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    app[keyReadyCallback] = <span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line">      inExistCallback(app.globalData[key])</span><br><span class="line">      callback(app.globalData[key])</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>5、 当无网络连接状态提示<br>  <figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">  <span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 无网络连接状态提示</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line">isConnected(&#123; callback = <span class="function"><span class="params">()</span> =&gt;</span> &#123; &#125; &#125; = &#123;&#125;) &#123;</span><br><span class="line">  wx.getNetworkType(&#123;</span><br><span class="line">    success: <span class="function"><span class="keyword">function</span> (<span class="params">res</span>) </span>&#123;</span><br><span class="line">      <span class="comment">// 返回网络类型, 有效值：</span></span><br><span class="line">      <span class="comment">// wifi/2g/3g/4g/unknown(Android下不常见的网络类型)/none(无网络)</span></span><br><span class="line">      <span class="keyword">var</span> networkType = res.networkType</span><br><span class="line">      <span class="keyword">if</span> (networkType == <span class="string">'none'</span>) &#123;</span><br><span class="line">        wx.hideLoading()</span><br><span class="line">        wx.showToast(&#123;</span><br><span class="line">          title: <span class="string">'当前无网络连接，请查看您的网络设置~'</span>,</span><br><span class="line">          icon: <span class="string">'none'</span>,</span><br><span class="line">          duration: <span class="number">2000</span></span><br><span class="line">        &#125;)</span><br><span class="line">      &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        callback()</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;,</span><br><span class="line">    fail: <span class="function"><span class="params">()</span> =&gt;</span> &#123;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">  &#125;)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h2 id="自定义组件-1"><a href="#自定义组件-1" class="headerlink" title="自定义组件"></a>自定义组件</h2><p>  1、获取对外属性<code>properties</code>的值，在<code>created</code>周期获取不到，需要在<code>attached</code>周期函数中获取<br>  <figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">attached()&#123;</span><br><span class="line">  <span class="built_in">console</span>.log(<span class="keyword">this</span>.data.dataName)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>2、样式绑定<br><figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!-- 组件 --&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">view</span> <span class="attr">style</span>=<span class="string">'&#123;&#123;style1&#125;&#125; &#123;&#123;style2&#125;&#125;'</span>&gt;</span><span class="tag">&lt;/<span class="name">view</span>&gt;</span></span><br></pre></td></tr></table></figure></p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// js</span></span><br><span class="line">Component(&#123;</span><br><span class="line">  properties: &#123;</span><br><span class="line">    style1:&#123;</span><br><span class="line">      type: <span class="built_in">String</span>,</span><br><span class="line">      value: <span class="string">''</span></span><br><span class="line">    &#125;,</span><br><span class="line">    style2:&#123;</span><br><span class="line">      type: <span class="built_in">String</span>,</span><br><span class="line">      value: <span class="string">''</span></span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!-- 引用 --&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">component</span> <span class="attr">head-style</span>=<span class="string">'width: 160rpx;height: 160rpx;'</span>&gt;</span><span class="tag">&lt;/<span class="name">component</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>3、绑定class<br><figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">view</span> <span class="attr">class</span>=<span class="string">'class1  class2 &#123;&#123;triggle ? "classTriggle" : ""&#125;&#125;'</span>&gt;</span><span class="tag">&lt;/<span class="name">view</span>&gt;</span></span><br></pre></td></tr></table></figure></p>
+<p>4、<code>setData</code>一个对象中一个属性的值<br><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">this</span>.setData(&#123;</span><br><span class="line">  [<span class="string">'obj.propName'</span>]: <span class="string">'new value'</span></span><br><span class="line">&#125;)</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> name = <span class="string">'propName'</span></span><br><span class="line"><span class="comment">// 也可以是表达式的形式</span></span><br><span class="line"><span class="keyword">this</span>.setData(&#123;</span><br><span class="line">  [<span class="string">`obj.<span class="subst">$&#123;name&#125;</span>`</span>]: <span class="string">'new value'</span></span><br><span class="line">&#125;)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">Page(&#123;</span><br><span class="line">  data:&#123;</span><br><span class="line">    userInfo:&#123;</span><br><span class="line">      nickName: <span class="string">''</span>,</span><br><span class="line">      age: <span class="number">16</span></span><br><span class="line">    &#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  setObjectProp () &#123;</span><br><span class="line">    <span class="keyword">this</span>.setData(&#123;</span><br><span class="line">      [<span class="string">'userInfo.nickName'</span>]: <span class="string">'new name'</span></span><br><span class="line">    &#125;)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure></p>
+<h4 id="自定义封装video组件"><a href="#自定义封装video组件" class="headerlink" title="自定义封装video组件"></a>自定义封装video组件</h4><figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!-- component 自定义组件dom结构 --&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">view</span> <span class="attr">class</span>=<span class="string">'video-wrapper'</span> <span class="attr">bindtap</span>=<span class="string">'onPlay'</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">video</span> <span class="attr">src</span>=<span class="string">'&#123;&#123;src&#125;&#125;'</span> <span class="attr">class</span>=<span class="string">'video'</span> <span class="attr">id</span>=<span class="string">"myVideo"</span>   </span></span><br><span class="line"><span class="tag">    <span class="attr">bindplay</span>=<span class="string">'play'</span> </span></span><br><span class="line"><span class="tag">    <span class="attr">bindpause</span>=<span class="string">'pause'</span>   </span></span><br><span class="line"><span class="tag">    <span class="attr">bindended</span>=<span class="string">'ended'</span>   </span></span><br><span class="line"><span class="tag">    <span class="attr">bindfullscreenchange</span>=<span class="string">'fullscreenchange'</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">video</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">view</span> <span class="attr">class</span>=<span class="string">'icon'</span>&gt;</span><span class="tag">&lt;/<span class="name">view</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">view</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">//js</span></span><br><span class="line">Component(&#123;</span><br><span class="line">  properties: &#123;</span><br><span class="line">    src: &#123; <span class="comment">// 视频地址</span></span><br><span class="line">      type: <span class="built_in">String</span>,</span><br><span class="line">      value: <span class="string">''</span></span><br><span class="line">    &#125;,</span><br><span class="line">  &#125;,</span><br><span class="line">  data: &#123;</span><br><span class="line">  &#125;,</span><br><span class="line">  methods: &#123;</span><br><span class="line">    play() &#123;</span><br><span class="line">      <span class="keyword">this</span>.triggerEvent(<span class="string">'myPlay'</span>, &#123;&#125;) <span class="comment">// 触发引用组件 当play时的事件</span></span><br><span class="line">    &#125;,</span><br><span class="line">    pause() &#123;</span><br><span class="line">      <span class="keyword">this</span>.triggerEvent(<span class="string">'myPause'</span>, &#123;&#125;)</span><br><span class="line">    &#125;,</span><br><span class="line">    ended() &#123;</span><br><span class="line">      <span class="keyword">this</span>.triggerEvent(<span class="string">'myEnded'</span>, &#123;&#125;)</span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">// 视频播放</span></span><br><span class="line"><span class="comment">*</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line">    onPlay() &#123;</span><br><span class="line">      <span class="keyword">this</span>.videoContext.play()</span><br><span class="line">      <span class="keyword">this</span>.requestFullScreen()</span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 视频全屏状态改变</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    fullscreenchange(event) &#123;</span><br><span class="line">      <span class="keyword">const</span> fullScreen = event.detail.fullScreen</span><br><span class="line">      <span class="keyword">if</span> (!fullScreen) &#123;</span><br><span class="line">        <span class="keyword">this</span>.videoContext.pause()</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;,</span><br><span class="line">    exitFullScreen()&#123;</span><br><span class="line">      <span class="keyword">this</span>.videoContext.exitFullScreen()</span><br><span class="line">    &#125;,</span><br><span class="line">    requestFullScreen() &#123;</span><br><span class="line">      <span class="keyword">this</span>.videoContext.requestFullScreen()</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  ready() &#123;</span><br><span class="line">    <span class="comment">// 第一个参数必须是 id </span></span><br><span class="line">    <span class="comment">// 自定义组件中使用video标签必须加第二个参数 this</span></span><br><span class="line">    <span class="keyword">this</span>.videoContext = wx.createVideoContext(<span class="string">'myVideo'</span>,<span class="keyword">this</span>)</span><br><span class="line">  &#125;,</span><br><span class="line"></span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
+<p>使用组件<br><figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">my-video</span> <span class="attr">src</span>=<span class="string">'video.src'</span></span></span><br><span class="line"><span class="tag">  <span class="attr">bind:myPlay</span>=<span class="string">'play'</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">my-video</span>&gt;</span></span><br></pre></td></tr></table></figure></p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">Page(&#123;</span><br><span class="line">  play () &#123;</span><br><span class="line">    <span class="built_in">console</span>.log(<span class="string">'myPlay'</span>)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
+<h2 id="遇到其他的坑"><a href="#遇到其他的坑" class="headerlink" title="遇到其他的坑"></a>遇到其他的坑</h2><p>  1、获取分享二维码<br>  这里前端不能直接请求api给的链接，因为小程序请求接口域名限制，只能通过后台请求再返给前端。且原始返回的图片好像是二进制码，需要后台转换成base64格式。如果后台返回字符串没有显示出图片，很可能是少拼接东西,前端/后端需做一下处理<br>  <figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="string">'data:image/png;base64,'</span> + res.data.base64</span><br></pre></td></tr></table></figure></p>
+<p>  2、去掉<code>button</code>组件的<code>border</code>样式，小程序使用<code>::after</code>实现的<br>  <figure class="highlight css"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="selector-tag">button</span><span class="selector-pseudo">::after</span>&#123;</span><br><span class="line">  <span class="attribute">display</span>: none;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h2 id="bug"><a href="#bug" class="headerlink" title="bug"></a>bug</h2><p> 1、<code>textarea</code> <code>show-confirm-bar=&#39;true&#39;</code> 无效。<br> <figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">textarea</span> <span class="attr">show-confirm-bar</span>=<span class="string">''</span>&gt;</span><span class="tag">&lt;/<span class="name">textarea</span>&gt;</span></span><br><span class="line">// 或者</span><br><span class="line"><span class="tag">&lt;<span class="name">textarea</span> <span class="attr">show-confirm-bar</span>=<span class="string">'&#123;&#123;falseVar&#125;&#125;'</span>&gt;</span><span class="tag">&lt;/<span class="name">textarea</span>&gt;</span></span><br></pre></td></tr></table></figure></p>
+<p> 2、<code>wx:if</code>和<code>wx:else</code> 搭配<br> <figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">view</span> <span class="attr">wx:if</span>=<span class="string">'&#123;&#123;false&#125;&#125;'</span> <span class="attr">wx:for</span>=<span class="string">'&#123;&#123;&#125;&#125;'</span>&gt;</span><span class="tag">&lt;/<span class="name">view</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">view</span> <span class="attr">wx:else</span>&gt;</span><span class="tag">&lt;/<span class="name">view</span>&gt;</span></span><br><span class="line"><span class="comment">&lt;!-- 此时就会报错 --&gt;</span></span><br><span class="line"></span><br><span class="line"><span class="comment">&lt;!-- 改为 --&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">block</span> <span class="attr">wx:if</span>=<span class="string">'&#123;&#123;false&#125;&#125;'</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">view</span> <span class="attr">wx:for</span>&gt;</span><span class="tag">&lt;/<span class="name">view</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">block</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">view</span> <span class="attr">wx:else</span>&gt;</span><span class="tag">&lt;/<span class="name">view</span>&gt;</span></span><br></pre></td></tr></table></figure></p>
+<p> 3、<code>request</code>请求接口安卓手机有时候会返回<code>String</code>而不是<code>json</code>,需要通过<code>trim()</code>去掉<code>bom</code>头<br> <figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  加个判断</span></span><br><span class="line"><span class="keyword">let</span> data = <span class="literal">null</span></span><br><span class="line"><span class="keyword">if</span>(<span class="keyword">typeof</span> res.data === <span class="string">'string'</span>)&#123;</span><br><span class="line">  data = res.data.trim()</span><br><span class="line">&#125;eles&#123;</span><br><span class="line">  data = res.data</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p> 4、页面循环一个数组动态头部插入自定义组件，且自定义组件（父组件）又引用了另一个自定义组件（子组件），子组件用到了父组件传递的数据，从而导致子组件渲染数据有问题，如下<br><figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!-- page --&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">block</span> <span class="attr">wx:for</span>=<span class="string">'&#123;&#123;array&#125;&#125;'</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">component</span> <span class="attr">prop-data</span>=<span class="string">'&#123;&#123;item&#125;&#125;'</span>&gt;</span><span class="tag">&lt;/<span class="name">component</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">block</span>&gt;</span></span><br></pre></td></tr></table></figure></p>
+<p>父组件<br><figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">view</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">component-sub</span> <span class="attr">prop-data-sub</span>=<span class="string">'&#123;&#123;propData.content&#125;&#125;'</span>&gt;</span><span class="tag">&lt;/<span class="name">component-sub</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">view</span>&gt;</span></span><br></pre></td></tr></table></figure></p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">Component(</span><br><span class="line">  properties:&#123;</span><br><span class="line">    propData:&#123;</span><br><span class="line">      type: <span class="built_in">Object</span>,</span><br><span class="line">      value: &#123;&#125;</span><br><span class="line">    &#125;,      </span><br><span class="line">  &#125;,</span><br><span class="line">  attached()&#123;</span><br><span class="line">    <span class="built_in">console</span>.log(<span class="keyword">this</span>.data.propData)</span><br><span class="line">    <span class="comment">// 如果是头部插入数据，动态生成的组件，在js中获取的数据一直是调用此组件数组的最后一条数据。从而导致传递给其子组件的数据有问题</span></span><br><span class="line">    <span class="comment">// 如果没有掉子组件，并且js中没有处理数据后渲染，直接展示数据，渲染是没问题的</span></span><br><span class="line">  &#125;</span><br><span class="line">)</span><br></pre></td></tr></table></figure>
+<p>hack 解决办法，利用<code>setData</code>的回调函数<br><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">insertHead ()&#123;</span><br><span class="line">  <span class="keyword">let</span> newArray = [newData, ...this.data.array] <span class="comment">// 暂存头部插入后的数据</span></span><br><span class="line">  <span class="keyword">this</span>.setData(&#123;</span><br><span class="line">    array: [],<span class="comment">// 先置空数组</span></span><br><span class="line">  &#125;,() =&gt;&#123;<span class="comment">// 设置成功后回调，再把头部插入数据后数组复制给array</span></span><br><span class="line">      <span class="keyword">this</span>.setData(&#123;</span><br><span class="line">        array: newArray</span><br><span class="line">      &#125;)</span><br><span class="line">  &#125;)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p><a href="https://github.com/Leo-July/remote-consultation" target="_blank" rel="noopener">源码地址</a></p>
+<p>持续更新中。。。</p>
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">标签</span><br>
+                
+    <a class="tag tag--primary tag--small t-link" href="/all-tags/小程序/">小程序</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/11/26/js-curring/" data-tooltip="js-柯里化" aria-label="上一篇: js-柯里化">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">上一篇</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/01/23/vue-barrage/" data-tooltip="vue 横屏滚动弹幕" aria-label="下一篇: vue 横屏滚动弹幕">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">下一篇</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2018/02/23/wechat/" title="分享到 Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2018/02/23/wechat/" title="分享到 Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2018/02/23/wechat/" title="分享到 Google+">
+                    <i class="fab fa-google-plus" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2018/02/23/wechat/" title="分享到 Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2018/02/23/wechat/&amp;title=微信小程序中遇到的坑和一些小技巧" title="分享到 QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2018/02/23/wechat/" title="分享到 Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+    </div>
+</article>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2021 Leo July. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/11/26/js-curring/" data-tooltip="js-柯里化" aria-label="上一篇: js-柯里化">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">上一篇</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/01/23/vue-barrage/" data-tooltip="vue 横屏滚动弹幕" aria-label="下一篇: vue 横屏滚动弹幕">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">下一篇</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2018/02/23/wechat/" title="分享到 Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2018/02/23/wechat/" title="分享到 Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2018/02/23/wechat/" title="分享到 Google+">
+                    <i class="fab fa-google-plus" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2018/02/23/wechat/" title="分享到 Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2018/02/23/wechat/&amp;title=微信小程序中遇到的坑和一些小技巧" title="分享到 QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2018/02/23/wechat/" title="分享到 Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+    <i id="btn-close-shareoptions" class="fa fa-times"></i>
+    <ul class="share-options">
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2018/02/23/wechat/">
+                    <i class="fab fa-facebook" aria-hidden="true"></i><span>分享到 Facebook</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2018/02/23/wechat/">
+                    <i class="fab fa-twitter" aria-hidden="true"></i><span>分享到 Twitter</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2018/02/23/wechat/">
+                    <i class="fab fa-google-plus" aria-hidden="true"></i><span>分享到 Google+</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2018/02/23/wechat/">
+                    <i class="fab fa-weibo" aria-hidden="true"></i><span>分享到 Weibo</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2018/02/23/wechat/&amp;title=微信小程序中遇到的坑和一些小技巧">
+                    <i class="fab fa-qq" aria-hidden="true"></i><span>分享到 QQ</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2018/02/23/wechat/">
+                    <i class="fa fa-star" aria-hidden="true"></i><span>分享到 Qzone</span>
+                </a>
+            </li>
+        
+    </ul>
+</div>
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180" alt="作者的图片">
+        
+            <h4 id="about-card-name">Leo July</h4>
+        <!--  -->
+            <div id="about-card-bio">vue,weex,ES6,js,jq,html5,less,css3,git,webpack</div>
+        <!--  -->
+        <!--  -->
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br>
+                高级前端工程师
+            </div>
+        <!--  -->
+        
+    </div>
+</div>
+
+        
+            <div id="algolia-search-modal" class="modal-container">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="close-button"><i class="fa fa-times"></i></span>
+            <a href="https://algolia.com" target="_blank" rel="noopener" class="searchby-algolia text-color-light link-unstyled">
+                <span class="searchby-algolia-text text-color-light text-small">by</span>
+                <img class="searchby-algolia-logo" src="https://www.algolia.com/static_assets/images/press/downloads/algolia-light.svg">
+            </a>
+            <i class="search-icon fa fa-search"></i>
+            <form id="algolia-search-form">
+                <input type="text" id="algolia-search-input" name="search" class="form-control input--large search-input" placeholder="Search ">
+            </form>
+        </div>
+        <div class="modal-body">
+            <div class="no-result text-color-light text-center">没有找到文章</div>
+            <div class="results">
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/16/h5-video/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/01/16/h5-video/video.png" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/16/h5-video/">
+                            <h3 class="media-heading">h5 video移动端填坑记</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年1月16日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/22/vue-chat-room/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/01/22/vue-chat-room/timg.jpeg" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/22/vue-chat-room/">
+                            <h3 class="media-heading">vue 仿app聊天室</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年1月22日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/23/vue-barrage/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/01/23/vue-barrage/thumbnail.jpg" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/23/vue-barrage/">
+                            <h3 class="media-heading">vue 横屏滚动弹幕</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年1月23日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/02/23/wechat/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/02/23/wechat/show.jpg" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/02/23/wechat/">
+                            <h3 class="media-heading">微信小程序中遇到的坑和一些小技巧</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年2月23日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/js-curring/">
+                            <h3 class="media-heading">js-柯里化</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- clearReading: true
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York"
+comments: false -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/Hexo-browsersync/">
+                            <h3 class="media-heading">Hexo使用browsersync浏览器热更新</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/axios/">
+                            <h3 class="media-heading">axios 二次封装，带有静默模式</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!--
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/jsDom/">
+                            <h3 class="media-heading">jsDom is not a function</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/29/xcode-select/">
+                            <h3 class="media-heading">mac xcode-select 下载安装</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月29日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/29/ssh -T git-github-com/">
+                            <h3 class="media-heading">ssh -T git@github.com 出现Permission denied (publickey)</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月29日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+            </div>
+        </div>
+        <div class="modal-footer">
+            <p class="results-count text-medium" data-message-zero="没有找到文章" data-message-one="找到 1 篇文章" data-message-other="找到 {n} 篇文章">
+                找到 22 篇文章
+            </p>
+        </div>
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="/assets/js/script-vufjrm3fmbuttogo1hxuu0w9w0sesk5iyysjuguc2hdhufot9szxg8twijry.min.js"></script>
+<!--SCRIPTS END-->
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.14.1/moment-with-locales.min.js"></script>
+    <script src="//cdn.jsdelivr.net/algoliasearch/3/algoliasearch.min.js"></script>
+    <script>
+        var algoliaClient = algoliasearch('QDFOH7HV1P', '5132f23a0d2983147e805aa47a5df3e4');
+        var algoliaIndex = algoliaClient.initIndex('tranquilpeak');
+    </script>
+
+
+    </body>
+</html>
