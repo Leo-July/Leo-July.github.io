@@ -6,25 +6,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="leo July&#39;s blog">
-    <title>页面滚动Passive event listeners - leo July&#39;s blog</title>
+    <title>归档: 2021/1 - leo July&#39;s blog</title>
     <meta name="author" content="Leo July">
-    
-        <meta name="keywords" content="javascript,html,chrome,ntervention">
     
     
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"},"articleBody":"\n移动端页面监听touch 事件，控制台会打印如下警告12[Intervention] Unable to preventDefault inside passive event listener due to target being treated as passive. See https://www.chromestatus.com/features/5093566007214080\nPassive event listeners2016年Google I/O上提出的概念，目的是用来提升页面滑动的流畅度。\n\nFor instance, in Chrome for Android 80% of the touch events that block scrolling never actually prevent it. 10% of these events add more than 100ms of delay to the start of scrolling, and a catastrophic delay of at least 500ms occurs in 1% of scrolls.在 Android 版 Chrome 浏览器的 touch 事件监听器的页面中，80% 的页面都不会调用 preventDefault 函数来阻止事件的默认行为。在滑动流畅度上，有 10% 的页面增加至少 100ms 的延迟，1% 的页面甚至增加 500ms 以上的延迟。由于浏览器无法预先知道一个事件处理函数中会不会调用 preventDefault()，它需要等到事件处理函数执行完后，才能去执行默认行为，然而事件处理函数执行是要耗时的，这样一来就会导致页面卡顿，也就是说，当浏览器等待执行事件的默认行为时，大部分情况是白等了。如果 Web 开发者能够提前告诉浏览器：“我不调用 preventDefault 函数来阻止事件事件行为”，那么浏览器就能快速生成事件，从而提升页面性能，Passive event listeners 的提出就解决了这样的问题。\n\n解决办法1：在touch的事件监听方法上绑定第三个参数{ passive: false }，通过传递 passive 为 false 来明确告诉浏览器：事件处理程序调用 preventDefault 来阻止默认滑动行为。MDN12345elem.addEventListener(  'touchstart',  fn,  &#123; passive: false &#125;);\n解决办法2：12/* 使用全局样式样式去掉 */* &#123; touch-action: pan-y; &#125;","dateCreated":"2019-08-02T10:44:40+08:00","dateModified":"2019-08-02T11:06:54+08:00","datePublished":"2019-08-02T10:44:40+08:00","description":"\n","headline":"页面滚动Passive event listeners","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://leo-july.github.io/2019/08/02/页面滚动Passive-event-listeners/"},"publisher":{"@type":"Organization","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180","logo":{"@type":"ImageObject","url":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"}},"url":"https://leo-july.github.io/2019/08/02/页面滚动Passive-event-listeners/"}</script>
-    <meta name="keywords" content="javascript,html,chrome,ntervention">
-<meta property="og:type" content="blog">
-<meta property="og:title" content="页面滚动Passive event listeners">
-<meta property="og:url" content="https://leo-july.github.io/2019/08/02/页面滚动Passive-event-listeners/index.html">
+    <script type="application/ld+json">{}</script>
+    <meta property="og:type" content="blog">
+<meta property="og:title" content="leo July&#39;s blog">
+<meta property="og:url" content="https://leo-july.github.io/all-archives/2021/01/index.html">
 <meta property="og:site_name" content="leo July&#39;s blog">
 <meta property="og:locale" content="zh-cn">
-<meta property="og:updated_time" content="2019-08-02T03:06:54.102Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="页面滚动Passive event listeners">
+<meta name="twitter:title" content="leo July&#39;s blog">
     
     
         
@@ -48,7 +44,7 @@
             <!-- Define author's picture -->
 
 
-<header id="header" data-behavior="4">
+<header id="header" data-behavior="1">
     <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
     <div class="header-title">
         <a class="header-title-link" href="/ ">leo July&#39;s blog</a>
@@ -71,7 +67,7 @@
         
     
 
-<nav id="sidebar" data-behavior="4">
+<nav id="sidebar" data-behavior="1">
     <div class="sidebar-container">
         
             <div class="sidebar-profile">
@@ -200,145 +196,78 @@
 </nav>
 
             
-            <div id="main" data-behavior="4"
+            <div id="main" data-behavior="1"
                  class="
                         hasCoverMetaIn
                         ">
                 
-<article class="post">
+    <section class="postShorten-group main-content-wrap">
     
     
-        <div class="post-header main-content-wrap text-left">
-    
-        <h1 class="post-title">
-            页面滚动Passive event listeners
-        </h1>
-    
-    
-        <div class="post-meta">
-    <time datetime="2019-08-02T10:44:40+08:00">
+    <article class="postShorten postShorten--thumbnailimg-right">
+        <div class="postShorten-wrap">
+            
+            <div class="postShorten-header">
+                <h1 class="postShorten-title">
+                    
+                        <a class="link-unstyled" href="/2021/01/04/vue项目必备配置/">
+                            vue项目必备配置（vscode）
+                        </a>
+                    
+                </h1>
+                <div class="postShorten-meta">
+    <time datetime="2021-01-04T15:50:52+08:00">
 	
-		    8月 02, 2019
+		    1月 04, 2021
     	
     </time>
     
-</div>
+        <span>发布在 </span>
+        
+    <a class="category-link" href="/all-categories/vue-git/">vue git</a>
+
 
     
 </div>
 
-    
-    <div class="post-content markdown">
-        <div class="main-content-wrap">
-            <!-- excerpt -->
-<p>移动端页面监听<code>touch</code> 事件，控制台会打印如下警告<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[Intervention] Unable to preventDefault inside passive event listener due to target being treated as passive. </span><br><span class="line">See https://www.chromestatus.com/features/5093566007214080</span><br></pre></td></tr></table></figure></p>
-<h3 id="Passive-event-listeners"><a href="#Passive-event-listeners" class="headerlink" title="Passive event listeners"></a>Passive event listeners</h3><p>2016年Google I/O上提出的概念，目的是用来提升页面滑动的流畅度。</p>
-<blockquote>
-<p>For instance, in Chrome for Android 80% of the touch events that block scrolling never actually prevent it. 10% of these events add more than 100ms of delay to the start of scrolling, and a catastrophic delay of at least 500ms occurs in 1% of scrolls.<br>在 Android 版 Chrome 浏览器的 touch 事件监听器的页面中，80% 的页面都不会调用 preventDefault 函数来阻止事件的默认行为。在滑动流畅度上，有 10% 的页面增加至少 100ms 的延迟，1% 的页面甚至增加 500ms 以上的延迟。<br>由于浏览器无法预先知道一个事件处理函数中会不会调用 preventDefault()，它需要等到事件处理函数执行完后，才能去执行默认行为，然而事件处理函数执行是要耗时的，这样一来就会导致页面卡顿，也就是说，当浏览器等待执行事件的默认行为时，大部分情况是白等了。<br>如果 Web 开发者能够提前告诉浏览器：“我不调用 preventDefault 函数来阻止事件事件行为”，那么浏览器就能快速生成事件，从而提升页面性能，Passive event listeners 的提出就解决了这样的问题。</p>
-</blockquote>
-<h3 id="解决办法1："><a href="#解决办法1：" class="headerlink" title="解决办法1："></a>解决办法1：</h3><p>在touch的事件监听方法上绑定第三个参数{ passive: false }，<br>通过传递 passive 为 false 来明确告诉浏览器：事件处理程序调用 preventDefault 来阻止默认滑动行为。<a href="https://developer.mozilla.org/zh-CN/docs/Web/API/EventTarget/addEventListener" target="_blank" rel="noopener">MDN</a><br><figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">elem.addEventListener(</span><br><span class="line">  <span class="string">'touchstart'</span>,</span><br><span class="line">  fn,</span><br><span class="line">  &#123; <span class="attr">passive</span>: <span class="literal">false</span> &#125;</span><br><span class="line">);</span><br></pre></td></tr></table></figure></p>
-<h3 id="解决办法2："><a href="#解决办法2：" class="headerlink" title="解决办法2："></a>解决办法2：</h3><figure class="highlight css"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 使用全局样式样式去掉 */</span></span><br><span class="line">* &#123; <span class="attribute">touch-action</span>: pan-y; &#125;</span><br></pre></td></tr></table></figure>
+            </div>
             
-
+                <div class="postShorten-excerpt">
+                    <!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a>
+                    
+                        <a href="/2021/01/04/vue项目必备配置/" class="postShorten-excerpt_link link">
+                            阅读全文
+                        </a>
+                        
+                    
+                </div>
+            
         </div>
-    </div>
-    <div id="post-footer" class="post-footer main-content-wrap">
+        
+    </article>
+    
+    <div class="pagination-bar">
+    <ul class="pagination">
         
         
-            <div class="post-actions-wrap">
-    <nav>
-        <ul class="post-actions post-action-nav">
-            <li class="post-action">
-                
-                    
-                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/08/02/前端资源文章收集/" data-tooltip="前端资源文章收集" aria-label="上一篇: 前端资源文章收集">
-                
-                    <i class="fa fa-angle-left" aria-hidden="true"></i>
-                    <span class="hide-xs hide-sm text-small icon-ml">上一篇</span>
-                </a>
-            </li>
-            <li class="post-action">
-                
-                    
-                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/08/01/git-gitignore/" data-tooltip="git .gitignore 设置了无效" aria-label="下一篇: git .gitignore 设置了无效">
-                
-                    <span class="hide-xs hide-sm text-small icon-mr">下一篇</span>
-                    <i class="fa fa-angle-right" aria-hidden="true"></i>
-                </a>
-            </li>
-        </ul>
-    </nav>
-    <ul class="post-actions post-action-share">
-        <li class="post-action hide-lg hide-md hide-sm">
-            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Diesen Beitrag teilen">
-                <i class="fa fa-share-alt" aria-hidden="true"></i>
-            </a>
-        </li>
-        
-            
-            
-            <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2019/08/02/页面滚动Passive-event-listeners/" title="分享到 Facebook">
-                    <i class="fab fa-facebook" aria-hidden="true"></i>
-                </a>
-            </li>
-        
-            
-            
-            <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2019/08/02/页面滚动Passive-event-listeners/" title="分享到 Twitter">
-                    <i class="fab fa-twitter" aria-hidden="true"></i>
-                </a>
-            </li>
-        
-            
-            
-            <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2019/08/02/页面滚动Passive-event-listeners/" title="分享到 Google+">
-                    <i class="fab fa-google-plus" aria-hidden="true"></i>
-                </a>
-            </li>
-        
-            
-            
-            <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2019/08/02/页面滚动Passive-event-listeners/" title="分享到 Weibo">
-                    <i class="fab fa-weibo" aria-hidden="true"></i>
-                </a>
-            </li>
-        
-            
-            
-            <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2019/08/02/页面滚动Passive-event-listeners/&amp;title=页面滚动Passive event listeners" title="分享到 QQ">
-                    <i class="fab fa-qq" aria-hidden="true"></i>
-                </a>
-            </li>
-        
-            
-            
-            <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2019/08/02/页面滚动Passive-event-listeners/" title="分享到 Qzone">
-                    <i class="fa fa-star" aria-hidden="true"></i>
-                </a>
-            </li>
-        
-        
-        <li class="post-action">
-            
-                <a class="post-action-btn btn btn--default" href="#" aria-label="Nach oben">
-            
-                <i class="fa fa-list" aria-hidden="true"></i>
-            </a>
-        </li>
+        <li class="pagination-number">第 1 页 共 1 页</li>
     </ul>
 </div>
 
-
-        
-        
-    </div>
-</article>
+</section>
 
 
 
@@ -349,154 +278,6 @@
 </footer>
 
             </div>
-            
-                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
-                    <div class="post-actions-wrap">
-    <nav>
-        <ul class="post-actions post-action-nav">
-            <li class="post-action">
-                
-                    
-                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/08/02/前端资源文章收集/" data-tooltip="前端资源文章收集" aria-label="上一篇: 前端资源文章收集">
-                
-                    <i class="fa fa-angle-left" aria-hidden="true"></i>
-                    <span class="hide-xs hide-sm text-small icon-ml">上一篇</span>
-                </a>
-            </li>
-            <li class="post-action">
-                
-                    
-                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/08/01/git-gitignore/" data-tooltip="git .gitignore 设置了无效" aria-label="下一篇: git .gitignore 设置了无效">
-                
-                    <span class="hide-xs hide-sm text-small icon-mr">下一篇</span>
-                    <i class="fa fa-angle-right" aria-hidden="true"></i>
-                </a>
-            </li>
-        </ul>
-    </nav>
-    <ul class="post-actions post-action-share">
-        <li class="post-action hide-lg hide-md hide-sm">
-            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Diesen Beitrag teilen">
-                <i class="fa fa-share-alt" aria-hidden="true"></i>
-            </a>
-        </li>
-        
-            
-            
-            <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2019/08/02/页面滚动Passive-event-listeners/" title="分享到 Facebook">
-                    <i class="fab fa-facebook" aria-hidden="true"></i>
-                </a>
-            </li>
-        
-            
-            
-            <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2019/08/02/页面滚动Passive-event-listeners/" title="分享到 Twitter">
-                    <i class="fab fa-twitter" aria-hidden="true"></i>
-                </a>
-            </li>
-        
-            
-            
-            <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2019/08/02/页面滚动Passive-event-listeners/" title="分享到 Google+">
-                    <i class="fab fa-google-plus" aria-hidden="true"></i>
-                </a>
-            </li>
-        
-            
-            
-            <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2019/08/02/页面滚动Passive-event-listeners/" title="分享到 Weibo">
-                    <i class="fab fa-weibo" aria-hidden="true"></i>
-                </a>
-            </li>
-        
-            
-            
-            <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2019/08/02/页面滚动Passive-event-listeners/&amp;title=页面滚动Passive event listeners" title="分享到 QQ">
-                    <i class="fab fa-qq" aria-hidden="true"></i>
-                </a>
-            </li>
-        
-            
-            
-            <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2019/08/02/页面滚动Passive-event-listeners/" title="分享到 Qzone">
-                    <i class="fa fa-star" aria-hidden="true"></i>
-                </a>
-            </li>
-        
-        
-        <li class="post-action">
-            
-                <a class="post-action-btn btn btn--default" href="#" aria-label="Nach oben">
-            
-                <i class="fa fa-list" aria-hidden="true"></i>
-            </a>
-        </li>
-    </ul>
-</div>
-
-
-                </div>
-                <div id="share-options-bar" class="share-options-bar" data-behavior="4">
-    <i id="btn-close-shareoptions" class="fa fa-times"></i>
-    <ul class="share-options">
-        
-            
-            
-            <li class="share-option">
-                <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2019/08/02/页面滚动Passive-event-listeners/">
-                    <i class="fab fa-facebook" aria-hidden="true"></i><span>分享到 Facebook</span>
-                </a>
-            </li>
-        
-            
-            
-            <li class="share-option">
-                <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2019/08/02/页面滚动Passive-event-listeners/">
-                    <i class="fab fa-twitter" aria-hidden="true"></i><span>分享到 Twitter</span>
-                </a>
-            </li>
-        
-            
-            
-            <li class="share-option">
-                <a class="share-option-btn" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2019/08/02/页面滚动Passive-event-listeners/">
-                    <i class="fab fa-google-plus" aria-hidden="true"></i><span>分享到 Google+</span>
-                </a>
-            </li>
-        
-            
-            
-            <li class="share-option">
-                <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2019/08/02/页面滚动Passive-event-listeners/">
-                    <i class="fab fa-weibo" aria-hidden="true"></i><span>分享到 Weibo</span>
-                </a>
-            </li>
-        
-            
-            
-            <li class="share-option">
-                <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2019/08/02/页面滚动Passive-event-listeners/&amp;title=页面滚动Passive event listeners">
-                    <i class="fab fa-qq" aria-hidden="true"></i><span>分享到 QQ</span>
-                </a>
-            </li>
-        
-            
-            
-            <li class="share-option">
-                <a class="share-option-btn" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2019/08/02/页面滚动Passive-event-listeners/">
-                    <i class="fa fa-star" aria-hidden="true"></i><span>分享到 Qzone</span>
-                </a>
-            </li>
-        
-    </ul>
-</div>
-
             
         </div>
         
