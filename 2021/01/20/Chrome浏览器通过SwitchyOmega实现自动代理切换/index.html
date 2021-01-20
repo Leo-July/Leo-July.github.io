@@ -9,14 +9,14 @@
     <title>Chrome浏览器通过SwitchyOmega实现自动代理切换 - leo July&#39;s blog</title>
     <meta name="author" content="Leo July">
     
-        <meta name="keywords" content="javascript">
+        <meta name="keywords" content="chrome">
     
     
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"},"articleBody":"\n在之前使用ShadowSocks代理FQ时，一般情况下我就使用默认的 “自动代理模式”，遇到一些需要FQ的网站时再手动切换为 “全局模式”。而有时候忘了切换回来，访问国内的网站就特别的慢。而每次都需要手动的切换也是非常繁琐。\n之前也曾使用过SwitchyOmega实现Chrome浏览器的代理切换，但当时只是进行了简单的设置，没有深入的去了解。所以遇到特殊的情况就很无奈，最后也就弃用了。\n最近花了点时间看了看SwitchyOmega的设置，感觉是时候实现代理的自动切换了。\nShadowSocks默认情况下，ss在自动模式下有一个PAC文件，记录着一些需要FQ才能访问的站点。不过对于该文件中没有记录的网站，则需要手动的添加进去。在之前的文章 如何添加URL到shadowsocks的列表让其使用代理访问 | IT范儿 中我也介绍了相关的手动添加方法。但是，每次遇到一个新的需FQ的站点都需要这样来操作，也确实繁琐了一些。\n关于ss的一些配置，这里就不详细的介绍了。所以在此之前，你应该有一个正常使用的ss客户端。\n\n安装Proxy SwitchyOmega在线安装正常情况下，开启了ss就可以直接访问Chrome应用商店来安装了。搜索 “Proxy SwitchyOmega” 安装即可。\n这里我也给出了 Proxy SwitchyOmega 的地址：\n\nProxy SwitchyOmega - Chrome 网上应用店\n\n离线安装当然，也可以通过离线的CRX包安装。从 Github 直接下载安装包：\n\nReleases · FelisCatus/SwitchyOmega\n\n在 Chrome 地址栏输入 chrome://extensions 打开扩展程序，拖动 .crx 后缀的 SwitchyOmega 安装文件到扩展程序中按提示进行安装。\n\nProxy SwitchyOmega配置在 Proxy SwitchyOmega 安装完成后默认已设置好两个情景模式：auto switch 和proxy。\n我下面的操作是将原来的默认设置删除后并重新添加的（因为之前有一些其他的设置），当然你可以直接按照我下面的方法来修改默认带的这两个模式。\n新增代理模式安装完成后会在 Chrome 浏览器右上角显示扩展程序的图标，选择 “选项” 打开 SwitchyOmega 选项设置界面，点击 “新建情景模式”，这里我设置名称为 ss代理（同默认的proxy模式），情景类型选择 “代理服务器”，之后新增一项 SOCKS5的代理信息：\n\n\n默认情况下，ss的 SOCKS5 代理端口为 1080 。\n完成之后，点击 “应用选项” 保存设置。\n新增智能切换模式再次点击 “新建情景模式”，我设置名称为 “智能切换”（同默认的auto switch模式），情景类型选择 “自动切换模式”，点击 “创建”。\n在 “规则列表设置” 中，填写：\n\n规则列表格式： AutoProxy规则列表网址： https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt\n\n然后点击 “立即更新情景模式”，之后会在 “规则列表正文” 中显示相应的规则列表。\n在上面的 “切换规则” 中，将 “规则列表规则” 前面的框打√，后面选择上一步设置的 “ss代理”(同默认的proxy模式) ，下面的 “默认情景模式” 选择 “直接连接” 。点击左侧 “应用选项” 保存设置即可。\n\n\n这样设置的意思表示：如果网址匹配到规则列表中的网址规则，则会走代理，如果没有匹配到规则及默认的情况下，则会直接访问。\n体验自动代理切换将ss的代理模式更改为 “自动代理模式”：点击 SwitchyOmega 图标选择 “智能切换” (同默认的proxy模式) 选项即可。\n\n\n然后在Chrome浏览器中打开 google.com 查看是否能正常访问。\n\n设置本地Ip不走代理有时候在本地开发网站项目时，都会通过本地的Ip来访问调试。但某些情况下本地的Ip也会去走SwitchyOmega的代理模式，所以需要将本地的Ip给屏蔽掉。\n如上面 “新增代理模式” 中的图片，在 “不代理地址列表” 中填写本地的Ip地址。\n我本机的Ip为 192.168.5.*，之后不要忘了 “应用选项” 来保存设置。\n\n新增自定义站点因为我们使用的自定义AutoProxy文件是公共的，所以不可能把所有需要的网址全都加进去。那么就需要来自动判断哪些网址需要添加进规则列表中。\n比如访问 https://www.instagram.com/ 网址，可以发现通过默认的 “智能切换” 是不能正常浏览的。\n不过，可以看到此时 SwitchyOmega 图标右下角多了一个数字 1。\n依次点击 SwitchyOmega 图标 – 1个资源未加载 ，在新的窗口中选择相应的情景模式 ss代理 并点击 “添加条件”。\n此时，可以看到网站刷新后页面能够正常的访问了。\n之后，再次访问网站 https://www.instagram.com/ 时就会自动使用 ss代理 模式来实现科学上网了。\n\n快速切换场景通过上面的设置后，在浏览网页时已经可以做到智能化的代理切换了：在规则列表中的走代理，其他的直接访问。没在规则列表中的手动添加一下即可。\n不过，时间长了之后我们也会感觉到厌烦。如果将浏览网站的需求剥离到最简单：\n一个网址，要么是正常浏览模式，要么是翻墙浏览模式。 \n所以，我们只需要在这两种模式之前切换就好了嘛，搞那么复杂干什么呢？\nSwitchyOmega 中也已经为我们添加了这样的选项 – “快速切换” 模式。\n在 “快速切换” 模式下，可以通过两种方式来切换情景模式：\n\n通过点击 SwitchyOmega 的图标来循环切换\n通过快捷键 Alt+Shift+O 来循环切换\n\n设置要启用 “快速切换” 模式，点击：\n“选项” – “界面” –（最下方）“快速切换”，勾选即可启用\n在 “循环切换以下情景模式” 中，加入 “直接连接” 和 “ss代理”（同默认的auto switch模式） 两项：\n\n\n最后，点击左侧的 ”应用选项“ 保存设置。\n使用在 ”快速切换“ 模式下，SwitchyOmega 图标点击就不会像之前一样弹出 代理列表菜单 了，而是在 “直连” 和 “代理” 之间循环切换。\n如果需要打开 SwitchyOmega 的选项，可以右击该图标 – 选择 “选项”。\n如果需要暂时停用 “快速切换” 模式，也可以右击该图标 – 将 “启用快速切换” 前面的 √ 去掉即可。\n这样在浏览网站时，如果 “直连” 无法访问，点击一下图标或者快捷键就可以使用代理了。\n不过，在一段时间的体验后个人感觉这种方式其实没有上面的 “自动切换模式” 来的方便。\n\n虚拟情景模式如何理解默认情况下，我们在一个情景模式中只能添加一个代理服务器。如果你有多个代理服务器可用，那么就需要添加多个代理情景模式。\n假如我有A、B、C三个代理。默认情况下，在 “自动切换模式” 下我选择的是A代理和直连。突然有一天，A代理挂掉了，连不上了，这时我就需要在 “自动切换模式” 中手动将B代理或者C代理设置为默认的代理服务器。\n而 “虚拟情景模式” 就是针对于这种多个代理的情况而言的。你可以把它看成 “代理工具的集合” ，可以快速的使用其中一个代理来进行连接。而如果其中一个代理挂掉，又可以快速的切换到另一个代理来使用。\n如何设置添加多个代理在开始设置之前，我们先添加多个代理。比如我这里添加了一个 ”B代理“ 和一个 ”C代理“ 。\n新增虚情景模式点击 “新增情景模式” – 设置名称（我这里设置为 “虚拟代理”） – 选择 “虚情景模式” – 创建。\n在 ”虚情景模式“ 的 ”目标“ 中，选择所有的 ”代理“ 模式其中的一项，表示默认使用的代理：\n\n\n最后，别忘了点击左侧的 ”应用选项“ 保存设置。\n使用虚情景代理选择 “自动代理模式” ：我这里是 “智能切换” 模式（同默认的auto switch模式）。\n将 “规则列表规则” 后面的情景模式更改为我们新设置的 “虚拟情景模式” 代理。\n\n\n最后，点击左侧的 ”应用选项“ 保存设置。\n使用打开 google.com 页面，依旧选择 “智能切换” （同默认的auto switch模式）代理。\n\n\n只是这时可以看到新增的 “虚拟代理” 选项后面多了一个下拉框，可以让我们在多个代理之间选择其中一个来使用。\n\n相关参考\nProxy SwitchyOmega - 轻松快捷的管理和切换多个代理设置\nSwitchyOmega代理设置 — 穿墙指南 1.0.0 文档\n显示查询自己的IP地址\n建议：换回proxyswitch的切换方式 · Issue #399 · FelisCatus/SwitchyOmega\n如何通俗的理解 Switchy Omega 虚拟情景模式 - 黑冰技术站\n","dateCreated":"2021-01-20T15:22:18+08:00","dateModified":"2021-01-20T15:23:08+08:00","datePublished":"2021-01-20T15:22:18+08:00","description":"\n","headline":"Chrome浏览器通过SwitchyOmega实现自动代理切换","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://leo-july.github.io/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/"},"publisher":{"@type":"Organization","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180","logo":{"@type":"ImageObject","url":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"}},"url":"https://leo-july.github.io/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/"}</script>
-    <meta name="keywords" content="javascript">
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"},"articleBody":"\n在之前使用ShadowSocks代理FQ时，一般情况下我就使用默认的 “自动代理模式”，遇到一些需要FQ的网站时再手动切换为 “全局模式”。而有时候忘了切换回来，访问国内的网站就特别的慢。而每次都需要手动的切换也是非常繁琐。\n之前也曾使用过SwitchyOmega实现Chrome浏览器的代理切换，但当时只是进行了简单的设置，没有深入的去了解。所以遇到特殊的情况就很无奈，最后也就弃用了。\n最近花了点时间看了看SwitchyOmega的设置，感觉是时候实现代理的自动切换了。\nShadowSocks默认情况下，ss在自动模式下有一个PAC文件，记录着一些需要FQ才能访问的站点。不过对于该文件中没有记录的网站，则需要手动的添加进去。在之前的文章 如何添加URL到shadowsocks的列表让其使用代理访问 | IT范儿 中我也介绍了相关的手动添加方法。但是，每次遇到一个新的需FQ的站点都需要这样来操作，也确实繁琐了一些。\n关于ss的一些配置，这里就不详细的介绍了。所以在此之前，你应该有一个正常使用的ss客户端。\n\n安装Proxy SwitchyOmega在线安装正常情况下，开启了ss就可以直接访问Chrome应用商店来安装了。搜索 “Proxy SwitchyOmega” 安装即可。\n这里我也给出了 Proxy SwitchyOmega 的地址：\n\nProxy SwitchyOmega - Chrome 网上应用店\n\n离线安装当然，也可以通过离线的CRX包安装。从 Github 直接下载安装包：\n\nReleases · FelisCatus/SwitchyOmega\n\n在 Chrome 地址栏输入 chrome://extensions 打开扩展程序，拖动 .crx 后缀的 SwitchyOmega 安装文件到扩展程序中按提示进行安装。\n\nProxy SwitchyOmega配置在 Proxy SwitchyOmega 安装完成后默认已设置好两个情景模式：auto switch 和proxy。\n我下面的操作是将原来的默认设置删除后并重新添加的（因为之前有一些其他的设置），当然你可以直接按照我下面的方法来修改默认带的这两个模式。\n新增代理模式安装完成后会在 Chrome 浏览器右上角显示扩展程序的图标，选择 “选项” 打开 SwitchyOmega 选项设置界面，点击 “新建情景模式”，这里我设置名称为 ss代理（同默认的proxy模式），情景类型选择 “代理服务器”，之后新增一项 SOCKS5的代理信息：\n\n\n默认情况下，ss的 SOCKS5 代理端口为 1080 。\n完成之后，点击 “应用选项” 保存设置。\n新增智能切换模式再次点击 “新建情景模式”，我设置名称为 “智能切换”（同默认的auto switch模式），情景类型选择 “自动切换模式”，点击 “创建”。\n在 “规则列表设置” 中，填写：\n\n规则列表格式： AutoProxy规则列表网址： https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt\n\n然后点击 “立即更新情景模式”，之后会在 “规则列表正文” 中显示相应的规则列表。\n在上面的 “切换规则” 中，将 “规则列表规则” 前面的框打√，后面选择上一步设置的 “ss代理”(同默认的proxy模式) ，下面的 “默认情景模式” 选择 “直接连接” 。点击左侧 “应用选项” 保存设置即可。\n\n\n这样设置的意思表示：如果网址匹配到规则列表中的网址规则，则会走代理，如果没有匹配到规则及默认的情况下，则会直接访问。\n体验自动代理切换将ss的代理模式更改为 “自动代理模式”：点击 SwitchyOmega 图标选择 “智能切换” (同默认的proxy模式) 选项即可。\n\n\n然后在Chrome浏览器中打开 google.com 查看是否能正常访问。\n\n设置本地Ip不走代理有时候在本地开发网站项目时，都会通过本地的Ip来访问调试。但某些情况下本地的Ip也会去走SwitchyOmega的代理模式，所以需要将本地的Ip给屏蔽掉。\n如上面 “新增代理模式” 中的图片，在 “不代理地址列表” 中填写本地的Ip地址。\n我本机的Ip为 192.168.5.*，之后不要忘了 “应用选项” 来保存设置。\n\n新增自定义站点因为我们使用的自定义AutoProxy文件是公共的，所以不可能把所有需要的网址全都加进去。那么就需要来自动判断哪些网址需要添加进规则列表中。\n比如访问 https://www.instagram.com/ 网址，可以发现通过默认的 “智能切换” 是不能正常浏览的。\n不过，可以看到此时 SwitchyOmega 图标右下角多了一个数字 1。\n依次点击 SwitchyOmega 图标 – 1个资源未加载 ，在新的窗口中选择相应的情景模式 ss代理 并点击 “添加条件”。\n此时，可以看到网站刷新后页面能够正常的访问了。\n之后，再次访问网站 https://www.instagram.com/ 时就会自动使用 ss代理 模式来实现科学上网了。\n\n快速切换场景通过上面的设置后，在浏览网页时已经可以做到智能化的代理切换了：在规则列表中的走代理，其他的直接访问。没在规则列表中的手动添加一下即可。\n不过，时间长了之后我们也会感觉到厌烦。如果将浏览网站的需求剥离到最简单：\n一个网址，要么是正常浏览模式，要么是翻墙浏览模式。 \n所以，我们只需要在这两种模式之前切换就好了嘛，搞那么复杂干什么呢？\nSwitchyOmega 中也已经为我们添加了这样的选项 – “快速切换” 模式。\n在 “快速切换” 模式下，可以通过两种方式来切换情景模式：\n\n通过点击 SwitchyOmega 的图标来循环切换\n通过快捷键 Alt+Shift+O 来循环切换\n\n设置要启用 “快速切换” 模式，点击：\n“选项” – “界面” –（最下方）“快速切换”，勾选即可启用\n在 “循环切换以下情景模式” 中，加入 “直接连接” 和 “ss代理”（同默认的auto switch模式） 两项：\n\n\n最后，点击左侧的 ”应用选项“ 保存设置。\n使用在 ”快速切换“ 模式下，SwitchyOmega 图标点击就不会像之前一样弹出 代理列表菜单 了，而是在 “直连” 和 “代理” 之间循环切换。\n如果需要打开 SwitchyOmega 的选项，可以右击该图标 – 选择 “选项”。\n如果需要暂时停用 “快速切换” 模式，也可以右击该图标 – 将 “启用快速切换” 前面的 √ 去掉即可。\n这样在浏览网站时，如果 “直连” 无法访问，点击一下图标或者快捷键就可以使用代理了。\n不过，在一段时间的体验后个人感觉这种方式其实没有上面的 “自动切换模式” 来的方便。\n\n虚拟情景模式如何理解默认情况下，我们在一个情景模式中只能添加一个代理服务器。如果你有多个代理服务器可用，那么就需要添加多个代理情景模式。\n假如我有A、B、C三个代理。默认情况下，在 “自动切换模式” 下我选择的是A代理和直连。突然有一天，A代理挂掉了，连不上了，这时我就需要在 “自动切换模式” 中手动将B代理或者C代理设置为默认的代理服务器。\n而 “虚拟情景模式” 就是针对于这种多个代理的情况而言的。你可以把它看成 “代理工具的集合” ，可以快速的使用其中一个代理来进行连接。而如果其中一个代理挂掉，又可以快速的切换到另一个代理来使用。\n如何设置添加多个代理在开始设置之前，我们先添加多个代理。比如我这里添加了一个 ”B代理“ 和一个 ”C代理“ 。\n新增虚情景模式点击 “新增情景模式” – 设置名称（我这里设置为 “虚拟代理”） – 选择 “虚情景模式” – 创建。\n在 ”虚情景模式“ 的 ”目标“ 中，选择所有的 ”代理“ 模式其中的一项，表示默认使用的代理：\n\n\n最后，别忘了点击左侧的 ”应用选项“ 保存设置。\n使用虚情景代理选择 “自动代理模式” ：我这里是 “智能切换” 模式（同默认的auto switch模式）。\n将 “规则列表规则” 后面的情景模式更改为我们新设置的 “虚拟情景模式” 代理。\n\n\n最后，点击左侧的 ”应用选项“ 保存设置。\n使用打开 google.com 页面，依旧选择 “智能切换” （同默认的auto switch模式）代理。\n\n\n只是这时可以看到新增的 “虚拟代理” 选项后面多了一个下拉框，可以让我们在多个代理之间选择其中一个来使用。\n\n相关参考\nProxy SwitchyOmega - 轻松快捷的管理和切换多个代理设置\nSwitchyOmega代理设置 — 穿墙指南 1.0.0 文档\n显示查询自己的IP地址\n建议：换回proxyswitch的切换方式 · Issue #399 · FelisCatus/SwitchyOmega\n如何通俗的理解 Switchy Omega 虚拟情景模式 - 黑冰技术站\n","dateCreated":"2021-01-20T15:22:18+08:00","dateModified":"2021-01-20T15:33:02+08:00","datePublished":"2021-01-20T15:22:18+08:00","description":"\n","headline":"Chrome浏览器通过SwitchyOmega实现自动代理切换","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://leo-july.github.io/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/"},"publisher":{"@type":"Organization","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180","logo":{"@type":"ImageObject","url":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"}},"url":"https://leo-july.github.io/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/","keywords":"chrome"}</script>
+    <meta name="keywords" content="chrome">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="Chrome浏览器通过SwitchyOmega实现自动代理切换">
 <meta property="og:url" content="https://leo-july.github.io/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/index.html">
@@ -29,7 +29,7 @@
 <meta property="og:image" content="https://gitee.com/leafney/blogimage/raw/master/blog/20190904153038.png">
 <meta property="og:image" content="https://gitee.com/leafney/blogimage/raw/master/blog/20190904153759.png">
 <meta property="og:image" content="https://gitee.com/leafney/blogimage/raw/master/blog/20190904154252.png">
-<meta property="og:updated_time" content="2021-01-20T07:23:08.936Z">
+<meta property="og:updated_time" content="2021-01-20T07:33:02.600Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Chrome浏览器通过SwitchyOmega实现自动代理切换">
 <meta name="twitter:image" content="https://gitee.com/leafney/blogimage/raw/master/blog/20190904123229.png">
@@ -343,6 +343,13 @@
     </div>
     <div id="post-footer" class="post-footer main-content-wrap">
         
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">标签</span><br>
+                
+    <a class="tag tag--primary tag--small t-link" href="/all-tags/chrome/">chrome</a>
+
+            </div>
+        
         
             <div class="post-actions-wrap">
     <nav>
@@ -368,7 +375,7 @@
     </nav>
     <ul class="post-actions post-action-share">
         <li class="post-action hide-lg hide-md hide-sm">
-            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Diesen Beitrag teilen">
                 <i class="fa fa-share-alt" aria-hidden="true"></i>
             </a>
         </li>
@@ -424,7 +431,7 @@
         
         <li class="post-action">
             
-                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Nach oben">
             
                 <i class="fa fa-list" aria-hidden="true"></i>
             </a>
@@ -473,7 +480,7 @@
     </nav>
     <ul class="post-actions post-action-share">
         <li class="post-action hide-lg hide-md hide-sm">
-            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Diesen Beitrag teilen">
                 <i class="fa fa-share-alt" aria-hidden="true"></i>
             </a>
         </li>
@@ -529,7 +536,7 @@
         
         <li class="post-action">
             
-                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Nach oben">
             
                 <i class="fa fa-list" aria-hidden="true"></i>
             </a>
