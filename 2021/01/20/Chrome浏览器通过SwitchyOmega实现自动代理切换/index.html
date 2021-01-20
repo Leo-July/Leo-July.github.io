@@ -1,0 +1,967 @@
+
+<!DOCTYPE html>
+<html lang="zh-cn">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="leo July&#39;s blog">
+    <title>Chrome浏览器通过SwitchyOmega实现自动代理切换 - leo July&#39;s blog</title>
+    <meta name="author" content="Leo July">
+    
+        <meta name="keywords" content="javascript">
+    
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"},"articleBody":"\n在之前使用ShadowSocks代理FQ时，一般情况下我就使用默认的 “自动代理模式”，遇到一些需要FQ的网站时再手动切换为 “全局模式”。而有时候忘了切换回来，访问国内的网站就特别的慢。而每次都需要手动的切换也是非常繁琐。\n之前也曾使用过SwitchyOmega实现Chrome浏览器的代理切换，但当时只是进行了简单的设置，没有深入的去了解。所以遇到特殊的情况就很无奈，最后也就弃用了。\n最近花了点时间看了看SwitchyOmega的设置，感觉是时候实现代理的自动切换了。\nShadowSocks默认情况下，ss在自动模式下有一个PAC文件，记录着一些需要FQ才能访问的站点。不过对于该文件中没有记录的网站，则需要手动的添加进去。在之前的文章 如何添加URL到shadowsocks的列表让其使用代理访问 | IT范儿 中我也介绍了相关的手动添加方法。但是，每次遇到一个新的需FQ的站点都需要这样来操作，也确实繁琐了一些。\n关于ss的一些配置，这里就不详细的介绍了。所以在此之前，你应该有一个正常使用的ss客户端。\n\n安装Proxy SwitchyOmega在线安装正常情况下，开启了ss就可以直接访问Chrome应用商店来安装了。搜索 “Proxy SwitchyOmega” 安装即可。\n这里我也给出了 Proxy SwitchyOmega 的地址：\n\nProxy SwitchyOmega - Chrome 网上应用店\n\n离线安装当然，也可以通过离线的CRX包安装。从 Github 直接下载安装包：\n\nReleases · FelisCatus/SwitchyOmega\n\n在 Chrome 地址栏输入 chrome://extensions 打开扩展程序，拖动 .crx 后缀的 SwitchyOmega 安装文件到扩展程序中按提示进行安装。\n\nProxy SwitchyOmega配置在 Proxy SwitchyOmega 安装完成后默认已设置好两个情景模式：auto switch 和proxy。\n我下面的操作是将原来的默认设置删除后并重新添加的（因为之前有一些其他的设置），当然你可以直接按照我下面的方法来修改默认带的这两个模式。\n新增代理模式安装完成后会在 Chrome 浏览器右上角显示扩展程序的图标，选择 “选项” 打开 SwitchyOmega 选项设置界面，点击 “新建情景模式”，这里我设置名称为 ss代理（同默认的proxy模式），情景类型选择 “代理服务器”，之后新增一项 SOCKS5的代理信息：\n\n\n默认情况下，ss的 SOCKS5 代理端口为 1080 。\n完成之后，点击 “应用选项” 保存设置。\n新增智能切换模式再次点击 “新建情景模式”，我设置名称为 “智能切换”（同默认的auto switch模式），情景类型选择 “自动切换模式”，点击 “创建”。\n在 “规则列表设置” 中，填写：\n\n规则列表格式： AutoProxy规则列表网址： https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt\n\n然后点击 “立即更新情景模式”，之后会在 “规则列表正文” 中显示相应的规则列表。\n在上面的 “切换规则” 中，将 “规则列表规则” 前面的框打√，后面选择上一步设置的 “ss代理”(同默认的proxy模式) ，下面的 “默认情景模式” 选择 “直接连接” 。点击左侧 “应用选项” 保存设置即可。\n\n\n这样设置的意思表示：如果网址匹配到规则列表中的网址规则，则会走代理，如果没有匹配到规则及默认的情况下，则会直接访问。\n体验自动代理切换将ss的代理模式更改为 “自动代理模式”：点击 SwitchyOmega 图标选择 “智能切换” (同默认的proxy模式) 选项即可。\n\n\n然后在Chrome浏览器中打开 google.com 查看是否能正常访问。\n\n设置本地Ip不走代理有时候在本地开发网站项目时，都会通过本地的Ip来访问调试。但某些情况下本地的Ip也会去走SwitchyOmega的代理模式，所以需要将本地的Ip给屏蔽掉。\n如上面 “新增代理模式” 中的图片，在 “不代理地址列表” 中填写本地的Ip地址。\n我本机的Ip为 192.168.5.*，之后不要忘了 “应用选项” 来保存设置。\n\n新增自定义站点因为我们使用的自定义AutoProxy文件是公共的，所以不可能把所有需要的网址全都加进去。那么就需要来自动判断哪些网址需要添加进规则列表中。\n比如访问 https://www.instagram.com/ 网址，可以发现通过默认的 “智能切换” 是不能正常浏览的。\n不过，可以看到此时 SwitchyOmega 图标右下角多了一个数字 1。\n依次点击 SwitchyOmega 图标 – 1个资源未加载 ，在新的窗口中选择相应的情景模式 ss代理 并点击 “添加条件”。\n此时，可以看到网站刷新后页面能够正常的访问了。\n之后，再次访问网站 https://www.instagram.com/ 时就会自动使用 ss代理 模式来实现科学上网了。\n\n快速切换场景通过上面的设置后，在浏览网页时已经可以做到智能化的代理切换了：在规则列表中的走代理，其他的直接访问。没在规则列表中的手动添加一下即可。\n不过，时间长了之后我们也会感觉到厌烦。如果将浏览网站的需求剥离到最简单：\n一个网址，要么是正常浏览模式，要么是翻墙浏览模式。 \n所以，我们只需要在这两种模式之前切换就好了嘛，搞那么复杂干什么呢？\nSwitchyOmega 中也已经为我们添加了这样的选项 – “快速切换” 模式。\n在 “快速切换” 模式下，可以通过两种方式来切换情景模式：\n\n通过点击 SwitchyOmega 的图标来循环切换\n通过快捷键 Alt+Shift+O 来循环切换\n\n设置要启用 “快速切换” 模式，点击：\n“选项” – “界面” –（最下方）“快速切换”，勾选即可启用\n在 “循环切换以下情景模式” 中，加入 “直接连接” 和 “ss代理”（同默认的auto switch模式） 两项：\n\n\n最后，点击左侧的 ”应用选项“ 保存设置。\n使用在 ”快速切换“ 模式下，SwitchyOmega 图标点击就不会像之前一样弹出 代理列表菜单 了，而是在 “直连” 和 “代理” 之间循环切换。\n如果需要打开 SwitchyOmega 的选项，可以右击该图标 – 选择 “选项”。\n如果需要暂时停用 “快速切换” 模式，也可以右击该图标 – 将 “启用快速切换” 前面的 √ 去掉即可。\n这样在浏览网站时，如果 “直连” 无法访问，点击一下图标或者快捷键就可以使用代理了。\n不过，在一段时间的体验后个人感觉这种方式其实没有上面的 “自动切换模式” 来的方便。\n\n虚拟情景模式如何理解默认情况下，我们在一个情景模式中只能添加一个代理服务器。如果你有多个代理服务器可用，那么就需要添加多个代理情景模式。\n假如我有A、B、C三个代理。默认情况下，在 “自动切换模式” 下我选择的是A代理和直连。突然有一天，A代理挂掉了，连不上了，这时我就需要在 “自动切换模式” 中手动将B代理或者C代理设置为默认的代理服务器。\n而 “虚拟情景模式” 就是针对于这种多个代理的情况而言的。你可以把它看成 “代理工具的集合” ，可以快速的使用其中一个代理来进行连接。而如果其中一个代理挂掉，又可以快速的切换到另一个代理来使用。\n如何设置添加多个代理在开始设置之前，我们先添加多个代理。比如我这里添加了一个 ”B代理“ 和一个 ”C代理“ 。\n新增虚情景模式点击 “新增情景模式” – 设置名称（我这里设置为 “虚拟代理”） – 选择 “虚情景模式” – 创建。\n在 ”虚情景模式“ 的 ”目标“ 中，选择所有的 ”代理“ 模式其中的一项，表示默认使用的代理：\n\n\n最后，别忘了点击左侧的 ”应用选项“ 保存设置。\n使用虚情景代理选择 “自动代理模式” ：我这里是 “智能切换” 模式（同默认的auto switch模式）。\n将 “规则列表规则” 后面的情景模式更改为我们新设置的 “虚拟情景模式” 代理。\n\n\n最后，点击左侧的 ”应用选项“ 保存设置。\n使用打开 google.com 页面，依旧选择 “智能切换” （同默认的auto switch模式）代理。\n\n\n只是这时可以看到新增的 “虚拟代理” 选项后面多了一个下拉框，可以让我们在多个代理之间选择其中一个来使用。\n\n相关参考\nProxy SwitchyOmega - 轻松快捷的管理和切换多个代理设置\nSwitchyOmega代理设置 — 穿墙指南 1.0.0 文档\n显示查询自己的IP地址\n建议：换回proxyswitch的切换方式 · Issue #399 · FelisCatus/SwitchyOmega\n如何通俗的理解 Switchy Omega 虚拟情景模式 - 黑冰技术站\n","dateCreated":"2021-01-20T15:22:18+08:00","dateModified":"2021-01-20T15:23:08+08:00","datePublished":"2021-01-20T15:22:18+08:00","description":"\n","headline":"Chrome浏览器通过SwitchyOmega实现自动代理切换","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://leo-july.github.io/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/"},"publisher":{"@type":"Organization","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180","logo":{"@type":"ImageObject","url":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"}},"url":"https://leo-july.github.io/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/"}</script>
+    <meta name="keywords" content="javascript">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Chrome浏览器通过SwitchyOmega实现自动代理切换">
+<meta property="og:url" content="https://leo-july.github.io/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/index.html">
+<meta property="og:site_name" content="leo July&#39;s blog">
+<meta property="og:locale" content="zh-cn">
+<meta property="og:image" content="https://gitee.com/leafney/blogimage/raw/master/blog/20190904123229.png">
+<meta property="og:image" content="https://gitee.com/leafney/blogimage/raw/master/blog/20190904134646.png">
+<meta property="og:image" content="https://gitee.com/leafney/blogimage/raw/master/blog/20190904134924.png">
+<meta property="og:image" content="https://gitee.com/leafney/blogimage/raw/master/blog/20190904155607.png">
+<meta property="og:image" content="https://gitee.com/leafney/blogimage/raw/master/blog/20190904153038.png">
+<meta property="og:image" content="https://gitee.com/leafney/blogimage/raw/master/blog/20190904153759.png">
+<meta property="og:image" content="https://gitee.com/leafney/blogimage/raw/master/blog/20190904154252.png">
+<meta property="og:updated_time" content="2021-01-20T07:23:08.936Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Chrome浏览器通过SwitchyOmega实现自动代理切换">
+<meta name="twitter:image" content="https://gitee.com/leafney/blogimage/raw/master/blog/20190904123229.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"/>
+    
+    
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="/assets/css/style-du2xmrqdqrl2ollgeiw050kpl6l4nbyz7bumjuurjgsxyopifvukebxc9lqe.min.css">
+    <!--STYLES END-->
+    
+
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">leo July&#39;s blog</a>
+    </div>
+    
+        
+            <a class="header-right-icon open-algolia-search" href="#search">
+        
+        
+            <i class="search fa-lg"></i>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180" alt="作者的图片">
+                </a>
+                <h4 class="sidebar-profile-name">Leo July</h4>
+                <!--  -->
+                    <h5 class="sidebar-profile-bio">vue,weex,ES6,js,jq,html5,less,css3,git,webpack</h5>
+                <!--  -->
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/ " title="首页">
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">首页</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-categories" title="分类">
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">分类</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-tags" title="标签">
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">标签</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-archives" title="归档">
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">归档</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link open-algolia-search" href="#search" title="搜索">
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">搜索</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="#about" title="关于">
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">关于</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://github.com/Leo-July" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="mailto:15563861385@163.com" target="_blank" rel="noopener" title="Emial">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Emial</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://xuebin.me" target="_blank" rel="noopener" title="xuebin.me">
+                    
+                        <i class="sidebar-button-icon fa fa-link" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">xuebin.me</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://zhangmiao.cc/" target="_blank" rel="noopener" title="zhangmiao.cc">
+                    
+                        <i class="sidebar-button-icon fa fa-link" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">zhangmiao.cc</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+            <div id="main" data-behavior="4"
+                 class="
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+        <div class="post-header main-content-wrap text-left">
+    
+        <h1 class="post-title">
+            Chrome浏览器通过SwitchyOmega实现自动代理切换
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2021-01-20T15:22:18+08:00">
+	
+		    1月 20, 2021
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<p>在之前使用ShadowSocks代理FQ时，一般情况下我就使用默认的 “自动代理模式”，遇到一些需要FQ的网站时再手动切换为 “全局模式”。而有时候忘了切换回来，访问国内的网站就特别的慢。而每次都需要手动的切换也是非常繁琐。</p>
+<p>之前也曾使用过SwitchyOmega实现Chrome浏览器的代理切换，但当时只是进行了简单的设置，没有深入的去了解。所以遇到特殊的情况就很无奈，最后也就弃用了。</p>
+<p>最近花了点时间看了看SwitchyOmega的设置，感觉是时候实现代理的自动切换了。</p>
+<h4 id="ShadowSocks"><a href="#ShadowSocks" class="headerlink" title="ShadowSocks"></a><a href="#ShadowSocks" title="ShadowSocks"></a>ShadowSocks</h4><p>默认情况下，ss在自动模式下有一个PAC文件，记录着一些需要FQ才能访问的站点。不过对于该文件中没有记录的网站，则需要手动的添加进去。在之前的文章 <a href="https://www.itfanr.cc/2019/05/13/ss-add-urls-use-proxy/" target="_blank" rel="noopener">如何添加URL到shadowsocks的列表让其使用代理访问 | IT范儿</a> 中我也介绍了相关的手动添加方法。但是，每次遇到一个新的需FQ的站点都需要这样来操作，也确实繁琐了一些。</p>
+<p>关于ss的一些配置，这里就不详细的介绍了。所以在此之前，你应该有一个正常使用的ss客户端。</p>
+<hr>
+<h4 id="安装Proxy-SwitchyOmega"><a href="#安装Proxy-SwitchyOmega" class="headerlink" title="安装Proxy SwitchyOmega"></a><a href="#安装Proxy-SwitchyOmega" title="安装Proxy SwitchyOmega"></a>安装Proxy SwitchyOmega</h4><h5 id="在线安装"><a href="#在线安装" class="headerlink" title="在线安装"></a><a href="#在线安装" title="在线安装"></a>在线安装</h5><p>正常情况下，开启了ss就可以直接访问Chrome应用商店来安装了。搜索 “Proxy SwitchyOmega” 安装即可。</p>
+<p>这里我也给出了 <code>Proxy SwitchyOmega</code> 的地址：</p>
+<ul>
+<li><a href="https://chrome.google.com/webstore/detail/proxy-switchyomega/padekgcemlokbadohgkifijomclgjgif" target="_blank" rel="noopener">Proxy SwitchyOmega - Chrome 网上应用店</a></li>
+</ul>
+<h5 id="离线安装"><a href="#离线安装" class="headerlink" title="离线安装"></a><a href="#离线安装" title="离线安装"></a>离线安装</h5><p>当然，也可以通过离线的CRX包安装。从 Github 直接下载安装包：</p>
+<ul>
+<li><a href="https://github.com/FelisCatus/SwitchyOmega/releases" target="_blank" rel="noopener">Releases · FelisCatus/SwitchyOmega</a></li>
+</ul>
+<p>在 Chrome 地址栏输入 <code>chrome://extensions</code> 打开扩展程序，拖动 <code>.crx</code> 后缀的 <code>SwitchyOmega</code> 安装文件到扩展程序中按提示进行安装。</p>
+<hr>
+<h4 id="Proxy-SwitchyOmega配置"><a href="#Proxy-SwitchyOmega配置" class="headerlink" title="Proxy SwitchyOmega配置"></a><a href="#Proxy-SwitchyOmega配置" title="Proxy SwitchyOmega配置"></a>Proxy SwitchyOmega配置</h4><p>在 <code>Proxy SwitchyOmega</code> 安装完成后默认已设置好两个情景模式：<code>auto switch</code> 和<code>proxy</code>。</p>
+<p>我下面的操作是将原来的默认设置删除后并重新添加的（因为之前有一些其他的设置），当然你可以直接按照我下面的方法来修改默认带的这两个模式。</p>
+<h5 id="新增代理模式"><a href="#新增代理模式" class="headerlink" title="新增代理模式"></a><a href="#新增代理模式" title="新增代理模式"></a>新增代理模式</h5><p>安装完成后会在 Chrome 浏览器右上角显示扩展程序的图标，选择 “选项” 打开 <code>SwitchyOmega</code> 选项设置界面，点击 “新建情景模式”，这里我设置名称为 <code>ss代理</code>（同默认的proxy模式），情景类型选择 “代理服务器”，之后新增一项 <code>SOCKS5</code>的代理信息：</p>
+<p><a href="https://gitee.com/leafney/blogimage/raw/master/blog/20190904123229.png" target="_blank" rel="noopener"><img src="https://gitee.com/leafney/blogimage/raw/master/blog/20190904123229.png" alt="">
+</a></p>
+<p>默认情况下，ss的 <code>SOCKS5</code> 代理端口为 <code>1080</code> 。</p>
+<p>完成之后，点击 “应用选项” 保存设置。</p>
+<h5 id="新增智能切换模式"><a href="#新增智能切换模式" class="headerlink" title="新增智能切换模式"></a><a href="#新增智能切换模式" title="新增智能切换模式"></a>新增智能切换模式</h5><p>再次点击 “新建情景模式”，我设置名称为 “智能切换”（同默认的auto switch模式），情景类型选择 “自动切换模式”，点击 “创建”。</p>
+<p>在 “规则列表设置” 中，填写：</p>
+<blockquote>
+<p>规则列表格式： <code>AutoProxy</code><br>规则列表网址： <code>https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt</code></p>
+</blockquote>
+<p>然后点击 “立即更新情景模式”，之后会在 “规则列表正文” 中显示相应的规则列表。</p>
+<p>在上面的 “切换规则” 中，将 “规则列表规则” 前面的框打<code>√</code>，后面选择上一步设置的 “ss代理”(同默认的proxy模式) ，下面的 “默认情景模式” 选择 “直接连接” 。点击左侧 “应用选项” 保存设置即可。</p>
+<p><a href="https://gitee.com/leafney/blogimage/raw/master/blog/20190904134646.png" target="_blank" rel="noopener"><img src="https://gitee.com/leafney/blogimage/raw/master/blog/20190904134646.png" alt="">
+</a></p>
+<p>这样设置的意思表示：如果网址匹配到规则列表中的网址规则，则会走代理，如果没有匹配到规则及默认的情况下，则会直接访问。</p>
+<h5 id="体验自动代理切换"><a href="#体验自动代理切换" class="headerlink" title="体验自动代理切换"></a><a href="#体验自动代理切换" title="体验自动代理切换"></a>体验自动代理切换</h5><p>将ss的代理模式更改为 “自动代理模式”：点击 <code>SwitchyOmega</code> 图标选择 “智能切换” (同默认的proxy模式) 选项即可。</p>
+<p><a href="https://gitee.com/leafney/blogimage/raw/master/blog/20190904134924.png" target="_blank" rel="noopener"><img src="https://gitee.com/leafney/blogimage/raw/master/blog/20190904134924.png" alt="">
+</a></p>
+<p>然后在Chrome浏览器中打开 <code>google.com</code> 查看是否能正常访问。</p>
+<hr>
+<h4 id="设置本地Ip不走代理"><a href="#设置本地Ip不走代理" class="headerlink" title="设置本地Ip不走代理"></a><a href="#设置本地Ip不走代理" title="设置本地Ip不走代理"></a>设置本地Ip不走代理</h4><p>有时候在本地开发网站项目时，都会通过本地的Ip来访问调试。但某些情况下本地的Ip也会去走SwitchyOmega的代理模式，所以需要将本地的Ip给屏蔽掉。</p>
+<p>如上面 “新增代理模式” 中的图片，在 “不代理地址列表” 中填写本地的Ip地址。</p>
+<p>我本机的Ip为 <code>192.168.5.*</code>，之后不要忘了 “应用选项” 来保存设置。</p>
+<hr>
+<h4 id="新增自定义站点"><a href="#新增自定义站点" class="headerlink" title="新增自定义站点"></a><a href="#新增自定义站点" title="新增自定义站点"></a>新增自定义站点</h4><p>因为我们使用的自定义AutoProxy文件是公共的，所以不可能把所有需要的网址全都加进去。那么就需要来自动判断哪些网址需要添加进规则列表中。</p>
+<p>比如访问 <code>https://www.instagram.com/</code> 网址，可以发现通过默认的 “智能切换” 是不能正常浏览的。</p>
+<p>不过，可以看到此时 <code>SwitchyOmega</code> 图标右下角多了一个数字 <code>1</code>。</p>
+<p>依次点击 <code>SwitchyOmega</code> 图标 – <code>1个资源未加载</code> ，在新的窗口中选择相应的情景模式 <code>ss代理</code> 并点击 “添加条件”。</p>
+<p>此时，可以看到网站刷新后页面能够正常的访问了。</p>
+<p>之后，再次访问网站 <code>https://www.instagram.com/</code> 时就会自动使用 <code>ss代理</code> 模式来实现科学上网了。</p>
+<hr>
+<h4 id="快速切换"><a href="#快速切换" class="headerlink" title="快速切换"></a><a href="#快速切换" title="快速切换"></a>快速切换</h4><h5 id="场景"><a href="#场景" class="headerlink" title="场景"></a><a href="#场景" title="场景"></a>场景</h5><p>通过上面的设置后，在浏览网页时已经可以做到智能化的代理切换了：在规则列表中的走代理，其他的直接访问。没在规则列表中的手动添加一下即可。</p>
+<p>不过，时间长了之后我们也会感觉到厌烦。如果将浏览网站的需求剥离到最简单：</p>
+<p><strong>一个网址，要么是正常浏览模式，要么是翻墙浏览模式。</strong> </p>
+<p>所以，我们只需要在这两种模式之前切换就好了嘛，搞那么复杂干什么呢？</p>
+<p><code>SwitchyOmega</code> 中也已经为我们添加了这样的选项 – “快速切换” 模式。</p>
+<p>在 “快速切换” 模式下，可以通过两种方式来切换情景模式：</p>
+<ol>
+<li>通过点击 <code>SwitchyOmega</code> 的图标来循环切换</li>
+<li>通过快捷键 <code>Alt+Shift+O</code> 来循环切换</li>
+</ol>
+<h5 id="设置"><a href="#设置" class="headerlink" title="设置"></a><a href="#设置" title="设置"></a>设置</h5><p>要启用 “快速切换” 模式，点击：</p>
+<p>“选项” – “界面” –（最下方）“快速切换”，勾选即可启用</p>
+<p>在 “循环切换以下情景模式” 中，加入 “直接连接” 和 “ss代理”（同默认的auto switch模式） 两项：</p>
+<p><a href="https://gitee.com/leafney/blogimage/raw/master/blog/20190904155607.png" target="_blank" rel="noopener"><img src="https://gitee.com/leafney/blogimage/raw/master/blog/20190904155607.png" alt="">
+</a></p>
+<p>最后，点击左侧的 ”应用选项“ 保存设置。</p>
+<h5 id="使用"><a href="#使用" class="headerlink" title="使用"></a><a href="#使用" title="使用"></a>使用</h5><p>在 ”快速切换“ 模式下，<code>SwitchyOmega</code> 图标点击就不会像之前一样弹出 <code>代理列表菜单</code> 了，而是在 “直连” 和 “代理” 之间循环切换。</p>
+<p>如果需要打开 <code>SwitchyOmega</code> 的选项，可以<strong>右击</strong>该图标 – 选择 “选项”。</p>
+<p>如果需要暂时停用 “快速切换” 模式，也可以<strong>右击</strong>该图标 – 将 “启用快速切换” 前面的 <code>√</code> 去掉即可。</p>
+<p>这样在浏览网站时，如果 “直连” 无法访问，点击一下图标或者快捷键就可以使用代理了。</p>
+<p>不过，在一段时间的体验后个人感觉这种方式其实没有上面的 “自动切换模式” 来的方便。</p>
+<hr>
+<h4 id="虚拟情景模式"><a href="#虚拟情景模式" class="headerlink" title="虚拟情景模式"></a><a href="#虚拟情景模式" title="虚拟情景模式"></a>虚拟情景模式</h4><h5 id="如何理解"><a href="#如何理解" class="headerlink" title="如何理解"></a><a href="#如何理解" title="如何理解"></a>如何理解</h5><p>默认情况下，我们在一个情景模式中只能添加一个代理服务器。如果你有多个代理服务器可用，那么就需要添加多个代理情景模式。</p>
+<p>假如我有A、B、C三个代理。默认情况下，在 “自动切换模式” 下我选择的是A代理和直连。突然有一天，A代理挂掉了，连不上了，这时我就需要在 “自动切换模式” 中手动将B代理或者C代理设置为默认的代理服务器。</p>
+<p>而 “虚拟情景模式” 就是针对于这种多个代理的情况而言的。你可以把它看成 “代理工具的集合” ，可以快速的使用其中一个代理来进行连接。而如果其中一个代理挂掉，又可以快速的切换到另一个代理来使用。</p>
+<h5 id="如何设置"><a href="#如何设置" class="headerlink" title="如何设置"></a><a href="#如何设置" title="如何设置"></a>如何设置</h5><h6 id="添加多个代理"><a href="#添加多个代理" class="headerlink" title="添加多个代理"></a><a href="#添加多个代理" title="添加多个代理"></a>添加多个代理</h6><p>在开始设置之前，我们先添加多个代理。比如我这里添加了一个 ”B代理“ 和一个 ”C代理“ 。</p>
+<h6 id="新增虚情景模式"><a href="#新增虚情景模式" class="headerlink" title="新增虚情景模式"></a><a href="#新增虚情景模式" title="新增虚情景模式"></a>新增虚情景模式</h6><p>点击 “新增情景模式” – 设置名称（我这里设置为 “虚拟代理”） – 选择 “虚情景模式” – 创建。</p>
+<p>在 ”虚情景模式“ 的 ”目标“ 中，选择所有的 ”代理“ 模式其中的一项，表示默认使用的代理：</p>
+<p><a href="https://gitee.com/leafney/blogimage/raw/master/blog/20190904153038.png" target="_blank" rel="noopener"><img src="https://gitee.com/leafney/blogimage/raw/master/blog/20190904153038.png" alt="">
+</a></p>
+<p>最后，别忘了点击左侧的 ”应用选项“ 保存设置。</p>
+<h6 id="使用虚情景代理"><a href="#使用虚情景代理" class="headerlink" title="使用虚情景代理"></a><a href="#使用虚情景代理" title="使用虚情景代理"></a>使用虚情景代理</h6><p>选择 “自动代理模式” ：我这里是 “智能切换” 模式（同默认的auto switch模式）。</p>
+<p>将 “规则列表规则” 后面的情景模式更改为我们新设置的 “虚拟情景模式” 代理。</p>
+<p><a href="https://gitee.com/leafney/blogimage/raw/master/blog/20190904153759.png" target="_blank" rel="noopener"><img src="https://gitee.com/leafney/blogimage/raw/master/blog/20190904153759.png" alt="">
+</a></p>
+<p>最后，点击左侧的 ”应用选项“ 保存设置。</p>
+<h6 id="使用-1"><a href="#使用-1" class="headerlink" title="使用"></a><a href="#使用-1" title="使用"></a>使用</h6><p>打开 <code>google.com</code> 页面，依旧选择 “智能切换” （同默认的auto switch模式）代理。</p>
+<p><a href="https://gitee.com/leafney/blogimage/raw/master/blog/20190904154252.png" target="_blank" rel="noopener"><img src="https://gitee.com/leafney/blogimage/raw/master/blog/20190904154252.png" alt="">
+</a></p>
+<p>只是这时可以看到新增的 “虚拟代理” 选项后面多了一个下拉框，可以让我们在多个代理之间选择其中一个来使用。</p>
+<hr>
+<h4 id="相关参考"><a href="#相关参考" class="headerlink" title="相关参考"></a><a href="#相关参考" title="相关参考"></a>相关参考</h4><ul>
+<li><a href="https://proxy-switchyomega.com/" target="_blank" rel="noopener">Proxy SwitchyOmega - 轻松快捷的管理和切换多个代理设置</a></li>
+<li><a href="https://wall-guide.readthedocs.io/zh/latest/SwitchyOmega%E4%BB%A3%E7%90%86%E8%AE%BE%E7%BD%AE.html" target="_blank" rel="noopener">SwitchyOmega代理设置 — 穿墙指南 1.0.0 文档</a></li>
+<li><a href="http://ip111.cn/" target="_blank" rel="noopener">显示查询自己的IP地址</a></li>
+<li><a href="https://github.com/feliscatus/switchyomega/issues/399" target="_blank" rel="noopener">建议：换回proxyswitch的切换方式 · Issue #399 · FelisCatus/SwitchyOmega</a></li>
+<li><a href="https://black1ce.com/skill/switchyomega-fic.html" target="_blank" rel="noopener">如何通俗的理解 Switchy Omega 虚拟情景模式 - 黑冰技术站</a></li>
+</ul>
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    <a class="post-action-btn btn btn--disabled">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">上一篇</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2021/01/05/由浅入深-66条Javascript面试知识点/" data-tooltip="由浅入深,66条Javascript面试知识点" aria-label="下一篇: 由浅入深,66条Javascript面试知识点">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">下一篇</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/" title="分享到 Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/" title="分享到 Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/" title="分享到 Google+">
+                    <i class="fab fa-google-plus" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/" title="分享到 Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/&amp;title=Chrome浏览器通过SwitchyOmega实现自动代理切换" title="分享到 QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/" title="分享到 Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+    </div>
+</article>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2021 Leo July. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    <a class="post-action-btn btn btn--disabled">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">上一篇</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2021/01/05/由浅入深-66条Javascript面试知识点/" data-tooltip="由浅入深,66条Javascript面试知识点" aria-label="下一篇: 由浅入深,66条Javascript面试知识点">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">下一篇</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/" title="分享到 Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/" title="分享到 Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/" title="分享到 Google+">
+                    <i class="fab fa-google-plus" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/" title="分享到 Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/&amp;title=Chrome浏览器通过SwitchyOmega实现自动代理切换" title="分享到 QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/" title="分享到 Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+    <i id="btn-close-shareoptions" class="fa fa-times"></i>
+    <ul class="share-options">
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/">
+                    <i class="fab fa-facebook" aria-hidden="true"></i><span>分享到 Facebook</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/">
+                    <i class="fab fa-twitter" aria-hidden="true"></i><span>分享到 Twitter</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/">
+                    <i class="fab fa-google-plus" aria-hidden="true"></i><span>分享到 Google+</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/">
+                    <i class="fab fa-weibo" aria-hidden="true"></i><span>分享到 Weibo</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/&amp;title=Chrome浏览器通过SwitchyOmega实现自动代理切换">
+                    <i class="fab fa-qq" aria-hidden="true"></i><span>分享到 QQ</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/">
+                    <i class="fa fa-star" aria-hidden="true"></i><span>分享到 Qzone</span>
+                </a>
+            </li>
+        
+    </ul>
+</div>
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180" alt="作者的图片">
+        
+            <h4 id="about-card-name">Leo July</h4>
+        <!--  -->
+            <div id="about-card-bio">vue,weex,ES6,js,jq,html5,less,css3,git,webpack</div>
+        <!--  -->
+        <!--  -->
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br>
+                高级前端工程师
+            </div>
+        <!--  -->
+        
+    </div>
+</div>
+
+        
+            <div id="algolia-search-modal" class="modal-container">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="close-button"><i class="fa fa-times"></i></span>
+            <a href="https://algolia.com" target="_blank" rel="noopener" class="searchby-algolia text-color-light link-unstyled">
+                <span class="searchby-algolia-text text-color-light text-small">by</span>
+                <img class="searchby-algolia-logo" src="https://www.algolia.com/static_assets/images/press/downloads/algolia-light.svg">
+            </a>
+            <i class="search-icon fa fa-search"></i>
+            <form id="algolia-search-form">
+                <input type="text" id="algolia-search-input" name="search" class="form-control input--large search-input" placeholder="Search ">
+            </form>
+        </div>
+        <div class="modal-body">
+            <div class="no-result text-color-light text-center">没有找到文章</div>
+            <div class="results">
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/16/h5-video/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/01/16/h5-video/video.png" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/16/h5-video/">
+                            <h3 class="media-heading">h5 video移动端填坑记</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年1月16日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/22/vue-chat-room/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/01/22/vue-chat-room/timg.jpeg" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/22/vue-chat-room/">
+                            <h3 class="media-heading">vue 仿app聊天室</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年1月22日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/23/vue-barrage/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/01/23/vue-barrage/thumbnail.jpg" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/23/vue-barrage/">
+                            <h3 class="media-heading">vue 横屏滚动弹幕</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年1月23日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/02/23/wechat/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/02/23/wechat/show.jpg" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/02/23/wechat/">
+                            <h3 class="media-heading">微信小程序中遇到的坑和一些小技巧</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年2月23日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/js-curring/">
+                            <h3 class="media-heading">js-柯里化</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- clearReading: true
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York"
+comments: false -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/Hexo-browsersync/">
+                            <h3 class="media-heading">Hexo使用browsersync浏览器热更新</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/axios/">
+                            <h3 class="media-heading">axios 二次封装，带有静默模式</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!--
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/jsDom/">
+                            <h3 class="media-heading">jsDom is not a function</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/29/xcode-select/">
+                            <h3 class="media-heading">mac xcode-select 下载安装</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月29日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/29/ssh -T git-github-com/">
+                            <h3 class="media-heading">ssh -T git@github.com 出现Permission denied (publickey)</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月29日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+            </div>
+        </div>
+        <div class="modal-footer">
+            <p class="results-count text-medium" data-message-zero="没有找到文章" data-message-one="找到 1 篇文章" data-message-other="找到 {n} 篇文章">
+                找到 25 篇文章
+            </p>
+        </div>
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="/assets/js/script-vufjrm3fmbuttogo1hxuu0w9w0sesk5iyysjuguc2hdhufot9szxg8twijry.min.js"></script>
+<!--SCRIPTS END-->
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.14.1/moment-with-locales.min.js"></script>
+    <script src="//cdn.jsdelivr.net/algoliasearch/3/algoliasearch.min.js"></script>
+    <script>
+        var algoliaClient = algoliasearch('QDFOH7HV1P', '5132f23a0d2983147e805aa47a5df3e4');
+        var algoliaIndex = algoliaClient.initIndex('tranquilpeak');
+    </script>
+
+
+    </body>
+</html>
