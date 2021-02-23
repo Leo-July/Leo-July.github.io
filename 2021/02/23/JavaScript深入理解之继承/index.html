@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="leo July&#39;s blog">
-    <title>js的原型和原型链 - leo July&#39;s blog</title>
+    <title>JavaScript深入理解之继承 - leo July&#39;s blog</title>
     <meta name="author" content="Leo July">
     
         <meta name="keywords" content="javascript">
@@ -15,22 +15,16 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"},"articleBody":"\n构造函数创建对象：\n123456function Person() &#123;&#125;var person = new Person();person.name = &apos;Kevin&apos;;console.log(person.name)\nPerson 就是一个构造函数，我们使用 new 创建了一个实例对象 person\nprototype每个函数都有一个 prototype 属性每一个JavaScript对象(null除外)在创建的时候就会与之关联另一个对象，这个对象就是我们所说的原型，每一个对象都会从原型”继承”属性。\n123456789function Person() &#123;&#125;Person.prototype.name = &apos;Kevin&apos;;var person1 = new Person();var person2 = new Person();console.log(person1.name) console.log(person2.name)\n\nimage.png\nproto每一个JavaScript对象(除了 null )都具有的一个属性，叫proto，这个属性会指向该对象的原型\n12345function Person() &#123;&#125;var person = new Person();console.log(person.__proto__ === Person.prototype);\n\nimage.png\nconstructor每个原型都有一个 constructor 属性指向关联的构造函数 实例原型指向构造函数\n1234function Person() &#123;&#125;console.log(Person === Person.prototype.constructor);\n\nimage.png\n12345678910function Person() &#123;&#125;var person = new Person();console.log(person.__proto__ == Person.prototype) console.log(Person.prototype.constructor == Person) console.log(Object.getPrototypeOf(person) === Person.prototype)\n实例与原型12345678910111213function Person() &#123;&#125;Person.prototype.name = &apos;Kevin&apos;;var person = new Person();person.name = &apos;Daisy&apos;;console.log(person.name) delete person.name;console.log(person.name)\n在这个例子中，我们给实例对象 person 添加了 name 属性，当我们打印 person.name 的时候，结果自然为 Daisy。\n但是当我们删除了 person 的 name 属性时，读取 person.name，从 person 对象中找不到 name 属性就会从 person 的原型也就是 person.proto ，也就是 Person.prototype中查找，幸运的是我们找到了 name 属性，结果为 Kevin。\n原型与原型123var obj = new Object();obj.name = &apos;Kevin&apos;console.log(obj.name)\n\nimage.png\n原型链console.log(Object.prototype.__proto__ === null) // true  \n\nimage.png\nJavaScript 默认并不会复制对象的属性，相反，JavaScript 只是在两个对象之间创建一个关联，这样，一个对象就可以通过委托访问另一个对象的属性和函数，所以与其叫继承，委托的说法反而更准确些\n 原文链接","dateCreated":"2021-02-23T16:57:35+08:00","dateModified":"2021-02-23T17:14:58+08:00","datePublished":"2021-02-23T16:57:35+08:00","description":"\n","headline":"js的原型和原型链","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://leo-july.github.io/2021/02/23/js的原型和原型链/"},"publisher":{"@type":"Organization","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180","logo":{"@type":"ImageObject","url":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"}},"url":"https://leo-july.github.io/2021/02/23/js的原型和原型链/","keywords":"javascript 面试"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"},"articleBody":"\n写在前面继承是面向对象语言中最重要的一个概念。许多面向对象语言都支持两种继承方式：接口继承和实现继承。接口继承只继承方法和签名，而实现继承则继承实际的方法。由于在 JavaScript 中函数没有签名，因此无法实现接口继承，只支持实现继承。\n原型链在 ECMAScript 中描述了原型链的概念，并将原型链作为实现继承的主要方法。其基本思想是利用原型让一个引用类型继承另一个引用类型的属性和方法。这一部分已经在前面总结过了，就不再多说了。\n缺点：\n\n包含引用类型的原型属性会被所有实例属性共享，容易造成属性的修改混乱。\n\n在创建子类型的实例时，不能向超类型的构造函数中传递参数。\n\n\n基于以上问题，在实践中很少会单独使用原型链。\n借用构造函数借用构造函数的思想主要是在子类型的构造函数中调用超类型构造函数。如下面的例子所示\n12345678910111213141516function SuperType()&#123;    this.colors = [\"red\", \"blue\", \"green\"];&#125;function SubType()&#123;    //继承了 SuperType    SuperType.call(this);&#125;var instance1 = new SubType();instance1.colors.push(\"black\");console.log(instance1.colors);  //\"red,blue,green,black\"var instance2 = new SubType();console.log(instance2.colors);  //\"red,blue,green\"\n优点：可以在子类型构造函数中向超类型构造函数添加参数\n缺点：和构造函数模式一样的问题，所有的方法都在构造函数中定义，因此就无法做到函数的复用。而且超类型的原型中定义的方法，对于子类型而言也是不可见的。\n基于以上问题，借用构造函数的技术也是很少单独使用的。\n组合继承组合继承指的是将原型链和借用构造函数的技术组合到一块，从而发挥二者之长的一种继承模式。这种方法的主要思路是使用原型链实现对原型属性和方法的继承，而通过借用构造函数来实现对实例属性的继承。这样既通过在原型上定义方法实现了函数复用，又能够保证每个实例都有它自己的属性。如下面的例子所示：\n12345678910111213141516171819202122232425262728293031323334function SuperType(name)&#123;    this.name = name    this.colors = [\"red\", \"blue\", \"green\"];&#125;SuperType.prototype.sayName = function()&#123;    console.log(this.name);&#125;function SubType(name, age)&#123;        //继承属性    SuperType.call(this,name);    this.age = age;&#125;//继承方法SubType.prototype = new SuperType();SubType.prototype.constructor = SubType;SubType.prototype.sayAge = function()&#123;    console.log(this.age);&#125;var instance1 = new SubType(\"james\",9);instance1.colors.push(\"black\");console.log(instance1.colors);  //\"red,blue,green,black\"instance1.sayName(); // \"james\"instance1.sayAge(); // 9var instance2 = new SubType(\"kobe\",10);console.log(instance2.colors);  //\"red,blue,green\"instance2.sayName(); // \"kobe\"instance2.sayAge(); // 10\n优点：组合继承避免了原型链和借用构造函数的缺陷，融合了它们的优点，成为 JavaScript 中最常用的继承模式。而且，instanceof 和 isPropertyOf() 也能够用于识别基于组合继承创建的对象。\n缺点：调用了两次超类的构造函数，导致基类的原型对象中增添了不必要的超类的实例对象中的所有属性。\n原型式继承原型式继承的主要思路是可以基于已有的对象创建新的对象，同时还不必因此创建自定义类型。如下面的例子所示\n12345function object(o)&#123;    function F()&#123;&#125;;    F.prototype = o;    return new F();&#125;\n简单来说这个函数的作用就是，传入一个对象，返回一个原型对象为该对象的新对象。\nECMAScript 5中新增了 Object.create() 方法规范了原型式继承。这个方法接收两个参数，一个是将被用作新对象原型的对象，一个是为新对象定义额外属性的对象（可选）。\n注意第二个参数的格式与 Object.defineProperties() 方法的第二个参数格式相同。以这种方式指定的任何属性都会覆盖原型对象上的同名属性。在第二个参数为空的情况下，该方法与 object() 方法的行为相同。\n优点：可以实现基于一个对象的简单继承，不必创建构造函数\n缺点：与原型链中提到的缺点相同，一个是传参的问题，一个是属性共享的问题。\n寄生式继承寄生式继承的思路是，创建一个仅用于封装继承过程的函数，该函数在内部以某种方式增强对象，最后返回这个对象。如下面的例子所示\n123456789101112131415161718function createAnother(original)&#123;        var clone = object(original); //通过调用函数创建一个新对象        clone.sayHi = function()&#123;  // 某种方式增强这个对象        console.log(\"hi\");    &#125;    return clone;  // 返回这个对象&#125;var person = &#123;    name: \"james\"&#125;var anotherPerson = createAnother(person);anotherPerson.sayHi(); // \"hi\"\n优点： 在主要考虑对象而不是自定义类型和构造函数的情况下，实现简单的继承。\n缺点：使用该继承方式，在为对象添加函数的时候，没有办法做到函数的复用。\n寄生式组合继承前面我们提到过了组合继承的缺点，由于调用了两次超类的构造函数，导致基类的原型对象中增添了不必要的超类的实例对象中的所有属性。\n寄生式组合继承就是用来解决这个问题，它与组合继承不同的地方主要是，在继承原型时，我们继承的不是超类的实例对象，而是原型对象是超类原型对象的一个实例对象，这样就解决了基类的原型对象中增添了不必要的超类的实例对象中的所有属性d的问题。\n我们可以封装继承原型时函数如下：\n12345678function inheritPrototype(subType, superType)&#123;    var prototype = object(superType.prototype); // 创建原型对象是超类原型对象的一个实例对象      prototype.constructor = subType; // 弥补因为重写原型而失去的默认的 constructor 属性。     subType.prototype = prototype; // 实现原型继承&#125;\n优点：效率高，避免了在 SubType.prototype 上创建不必要的属性。与此同时还能保持原型链不变，开发人员普遍认为寄生组合式继承是引用类型最理想的继承范式。\n 原文地址","dateCreated":"2021-02-23T17:19:25+08:00","dateModified":"2021-02-23T17:20:39+08:00","datePublished":"2021-02-23T17:19:25+08:00","description":"\n","headline":"JavaScript深入理解之继承","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://leo-july.github.io/2021/02/23/JavaScript深入理解之继承/"},"publisher":{"@type":"Organization","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180","logo":{"@type":"ImageObject","url":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"}},"url":"https://leo-july.github.io/2021/02/23/JavaScript深入理解之继承/"}</script>
     <meta name="keywords" content="javascript">
 <meta property="og:type" content="blog">
-<meta property="og:title" content="js的原型和原型链">
-<meta property="og:url" content="https://leo-july.github.io/2021/02/23/js的原型和原型链/index.html">
+<meta property="og:title" content="JavaScript深入理解之继承">
+<meta property="og:url" content="https://leo-july.github.io/2021/02/23/JavaScript深入理解之继承/index.html">
 <meta property="og:site_name" content="leo July&#39;s blog">
 <meta property="og:locale" content="zh-cn">
-<meta property="og:image" content="https://leo-july.github.io/2021/02/23/js的原型和原型链/1490251-48851bf37a08259d.png">
-<meta property="og:image" content="https://leo-july.github.io/2021/02/23/js的原型和原型链/1490251-e7476a8697e97aab.png">
-<meta property="og:image" content="https://leo-july.github.io/2021/02/23/js的原型和原型链/1490251-0cac772635e8a128.png">
-<meta property="og:image" content="https://leo-july.github.io/2021/02/23/js的原型和原型链/1490251-293b8fe01cf2ef5f.png">
-<meta property="og:image" content="https://leo-july.github.io/2021/02/23/js的原型和原型链/1490251-3089c135df71c956.png">
-<meta property="og:updated_time" content="2021-02-23T09:14:58.042Z">
+<meta property="og:updated_time" content="2021-02-23T09:20:39.163Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="js的原型和原型链">
-<meta name="twitter:image" content="https://leo-july.github.io/2021/02/23/js的原型和原型链/1490251-48851bf37a08259d.png">
+<meta name="twitter:title" content="JavaScript深入理解之继承">
     
     
         
@@ -217,22 +211,16 @@
         <div class="post-header main-content-wrap text-left">
     
         <h1 class="post-title">
-            js的原型和原型链
+            JavaScript深入理解之继承
         </h1>
     
     
         <div class="post-meta">
-    <time datetime="2021-02-23T16:57:35+08:00">
+    <time datetime="2021-02-23T17:19:25+08:00">
 	
 		    2月 23, 2021
     	
     </time>
-    
-        <span>发布在 </span>
-        
-    <a class="category-link" href="/all-categories/面试/">面试</a>
-
-
     
 </div>
 
@@ -243,45 +231,47 @@
     <div class="post-content markdown">
         <div class="main-content-wrap">
             <!-- excerpt -->
-<p>构造函数创建对象：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">function Person() &#123;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line">var person = new Person();</span><br><span class="line">person.name = &apos;Kevin&apos;;</span><br><span class="line">console.log(person.name)</span><br></pre></td></tr></table></figure>
-<p>Person 就是一个构造函数，我们使用 new 创建了一个实例对象 person</p>
-<h5 id="prototype"><a href="#prototype" class="headerlink" title="prototype"></a>prototype</h5><p>每个函数都有一个 prototype 属性<br>每一个JavaScript对象(null除外)在创建的时候就会与之关联另一个对象，这个对象就是我们所说的原型，每一个对象都会从原型”继承”属性。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">function Person() &#123;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">Person.prototype.name = &apos;Kevin&apos;;</span><br><span class="line">var person1 = new Person();</span><br><span class="line">var person2 = new Person();</span><br><span class="line">console.log(person1.name) </span><br><span class="line">console.log(person2.name)</span><br></pre></td></tr></table></figure>
-<p><img src="1490251-48851bf37a08259d.png" alt=""></p>
-<p>image.png</p>
-<h5 id="proto"><a href="#proto" class="headerlink" title="proto"></a><strong>proto</strong></h5><p>每一个JavaScript对象(除了 null )都具有的一个属性，叫<strong>proto</strong>，这个属性会指向该对象的原型</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">function Person() &#123;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line">var person = new Person();</span><br><span class="line">console.log(person.__proto__ === Person.prototype);</span><br></pre></td></tr></table></figure>
-<p><img src="1490251-e7476a8697e97aab.png" alt=""></p>
-<p>image.png</p>
-<h5 id="constructor-NaN"><a href="#constructor-NaN" class="headerlink" title="constructor"></a>constructor</h5><p>每个原型都有一个 constructor 属性指向关联的构造函数 实例原型指向构造函数</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">function Person() &#123;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line">console.log(Person === Person.prototype.constructor);</span><br></pre></td></tr></table></figure>
-<p><img src="1490251-0cac772635e8a128.png" alt=""></p>
-<p>image.png</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">function Person() &#123;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">var person = new Person();</span><br><span class="line"></span><br><span class="line">console.log(person.__proto__ == Person.prototype) </span><br><span class="line">console.log(Person.prototype.constructor == Person) </span><br><span class="line"></span><br><span class="line">console.log(Object.getPrototypeOf(person) === Person.prototype)</span><br></pre></td></tr></table></figure>
-<h6 id="实例与原型"><a href="#实例与原型" class="headerlink" title="实例与原型"></a>实例与原型</h6><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">function Person() &#123;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">Person.prototype.name = &apos;Kevin&apos;;</span><br><span class="line"></span><br><span class="line">var person = new Person();</span><br><span class="line"></span><br><span class="line">person.name = &apos;Daisy&apos;;</span><br><span class="line">console.log(person.name) </span><br><span class="line"></span><br><span class="line">delete person.name;</span><br><span class="line">console.log(person.name)</span><br></pre></td></tr></table></figure>
-<p>在这个例子中，我们给实例对象 person 添加了 name 属性，当我们打印 person.name 的时候，结果自然为 Daisy。</p>
-<p>但是当我们删除了 person 的 name 属性时，读取 person.name，从 person 对象中找不到 name 属性就会从 person 的原型也就是 person.<strong>proto</strong> ，也就是 Person.prototype中查找，幸运的是我们找到了 name 属性，结果为 Kevin。</p>
-<h5 id="原型与原型"><a href="#原型与原型" class="headerlink" title="原型与原型"></a>原型与原型</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">var obj = new Object();</span><br><span class="line">obj.name = &apos;Kevin&apos;</span><br><span class="line">console.log(obj.name)</span><br></pre></td></tr></table></figure>
-<p><img src="1490251-293b8fe01cf2ef5f.png" alt=""></p>
-<p>image.png</p>
-<h4 id="原型链"><a href="#原型链" class="headerlink" title="原型链"></a>原型链</h4><p><code>console.log(Object.prototype.__proto__ === null) // true</code>  </p>
-<p><img src="1490251-3089c135df71c956.png" alt=""></p>
-<p>image.png</p>
-<p>JavaScript 默认并不会<strong>复制</strong>对象的属性，相反，JavaScript 只是在两个对象之间创建一个<strong>关联</strong>，这样，一个对象就可以通过委托访问另一个对象的属性和函数，所以与其叫继承，<strong>委托</strong>的说法反而更准确些</p>
-<p> <a href="https://www.jianshu.com/p/be7c95714586" target="_blank" rel="noopener">原文链接</a></p>
+<h2 id="写在前面"><a href="#写在前面" class="headerlink" title="写在前面"></a><a href="#写在前面" title="写在前面"></a>写在前面</h2><p>继承是面向对象语言中最重要的一个概念。许多面向对象语言都支持两种继承方式：接口继承和实现继承。接口继承只继承方法和签名，而实现继承则继承实际的方法。由于在 JavaScript 中函数没有签名，因此无法实现接口继承，只支持实现继承。</p>
+<h2 id="原型链"><a href="#原型链" class="headerlink" title="原型链"></a><a href="#原型链" title="原型链"></a>原型链</h2><p>在 ECMAScript 中描述了原型链的概念，并将原型链作为实现继承的主要方法。其基本思想是利用原型让一个引用类型继承另一个引用类型的属性和方法。这一部分已经在前面总结过了，就不再多说了。</p>
+<p>缺点：</p>
+<ol>
+<li><p>包含引用类型的原型属性会被所有实例属性共享，容易造成属性的修改混乱。</p>
+</li>
+<li><p>在创建子类型的实例时，不能向超类型的构造函数中传递参数。</p>
+</li>
+</ol>
+<p>基于以上问题，在实践中很少会单独使用原型链。</p>
+<h2 id="借用构造函数"><a href="#借用构造函数" class="headerlink" title="借用构造函数"></a><a href="#借用构造函数" title="借用构造函数"></a>借用构造函数</h2><p>借用构造函数的思想主要是在子类型的构造函数中调用超类型构造函数。如下面的例子所示</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">SuperType</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">    <span class="keyword">this</span>.colors = [<span class="string">"red"</span>, <span class="string">"blue"</span>, <span class="string">"green"</span>];</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">SubType</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">    <span class="comment">//继承了 SuperType</span></span><br><span class="line"></span><br><span class="line">    SuperType.call(<span class="keyword">this</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> instance1 = <span class="keyword">new</span> SubType();</span><br><span class="line">instance1.colors.push(<span class="string">"black"</span>);</span><br><span class="line"><span class="built_in">console</span>.log(instance1.colors);  <span class="comment">//"red,blue,green,black"</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> instance2 = <span class="keyword">new</span> SubType();</span><br><span class="line"><span class="built_in">console</span>.log(instance2.colors);  <span class="comment">//"red,blue,green"</span></span><br></pre></td></tr></table></figure>
+<p>优点：可以在子类型构造函数中向超类型构造函数添加参数</p>
+<p>缺点：和构造函数模式一样的问题，所有的方法都在构造函数中定义，因此就无法做到函数的复用。而且超类型的原型中定义的方法，对于子类型而言也是不可见的。</p>
+<p>基于以上问题，借用构造函数的技术也是很少单独使用的。</p>
+<h2 id="组合继承"><a href="#组合继承" class="headerlink" title="组合继承"></a><a href="#组合继承" title="组合继承"></a>组合继承</h2><p>组合继承指的是将原型链和借用构造函数的技术组合到一块，从而发挥二者之长的一种继承模式。这种方法的主要思路是使用原型链实现对原型属性和方法的继承，而通过借用构造函数来实现对实例属性的继承。这样既通过在原型上定义方法实现了函数复用，又能够保证每个实例都有它自己的属性。如下面的例子所示：</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">SuperType</span>(<span class="params">name</span>)</span>&#123;</span><br><span class="line">    <span class="keyword">this</span>.name = name</span><br><span class="line">    <span class="keyword">this</span>.colors = [<span class="string">"red"</span>, <span class="string">"blue"</span>, <span class="string">"green"</span>];</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">SuperType.prototype.sayName = <span class="function"><span class="keyword">function</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">    <span class="built_in">console</span>.log(<span class="keyword">this</span>.name);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">SubType</span>(<span class="params">name, age</span>)</span>&#123;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//继承属性</span></span><br><span class="line">    SuperType.call(<span class="keyword">this</span>,name);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">this</span>.age = age;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//继承方法</span></span><br><span class="line">SubType.prototype = <span class="keyword">new</span> SuperType();</span><br><span class="line">SubType.prototype.constructor = SubType;</span><br><span class="line">SubType.prototype.sayAge = <span class="function"><span class="keyword">function</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">    <span class="built_in">console</span>.log(<span class="keyword">this</span>.age);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> instance1 = <span class="keyword">new</span> SubType(<span class="string">"james"</span>,<span class="number">9</span>);</span><br><span class="line">instance1.colors.push(<span class="string">"black"</span>);</span><br><span class="line"><span class="built_in">console</span>.log(instance1.colors);  <span class="comment">//"red,blue,green,black"</span></span><br><span class="line">instance1.sayName(); <span class="comment">// "james"</span></span><br><span class="line">instance1.sayAge(); <span class="comment">// 9</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> instance2 = <span class="keyword">new</span> SubType(<span class="string">"kobe"</span>,<span class="number">10</span>);</span><br><span class="line"><span class="built_in">console</span>.log(instance2.colors);  <span class="comment">//"red,blue,green"</span></span><br><span class="line">instance2.sayName(); <span class="comment">// "kobe"</span></span><br><span class="line">instance2.sayAge(); <span class="comment">// 10</span></span><br></pre></td></tr></table></figure>
+<p>优点：组合继承避免了原型链和借用构造函数的缺陷，融合了它们的优点，成为 JavaScript 中最常用的继承模式。而且，instanceof 和 isPropertyOf() 也能够用于识别基于组合继承创建的对象。</p>
+<p>缺点：调用了两次超类的构造函数，导致基类的原型对象中增添了不必要的超类的实例对象中的所有属性。</p>
+<h2 id="原型式继承"><a href="#原型式继承" class="headerlink" title="原型式继承"></a><a href="#原型式继承" title="原型式继承"></a>原型式继承</h2><p>原型式继承的主要思路是可以基于已有的对象创建新的对象，同时还不必因此创建自定义类型。如下面的例子所示</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">object</span>(<span class="params">o</span>)</span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">function</span> <span class="title">F</span>(<span class="params"></span>)</span>&#123;&#125;;</span><br><span class="line">    F.prototype = o;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> F();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>简单来说这个函数的作用就是，传入一个对象，返回一个原型对象为该对象的新对象。</p>
+<p>ECMAScript 5中新增了 Object.create() 方法规范了原型式继承。这个方法接收两个参数，一个是将被用作新对象原型的对象，一个是为新对象定义额外属性的对象（可选）。</p>
+<p>注意第二个参数的格式与 Object.defineProperties() 方法的第二个参数格式相同。以这种方式指定的任何属性都会覆盖原型对象上的同名属性。在第二个参数为空的情况下，该方法与 object() 方法的行为相同。</p>
+<p>优点：可以实现基于一个对象的简单继承，不必创建构造函数</p>
+<p>缺点：与原型链中提到的缺点相同，一个是传参的问题，一个是属性共享的问题。</p>
+<h2 id="寄生式继承"><a href="#寄生式继承" class="headerlink" title="寄生式继承"></a><a href="#寄生式继承" title="寄生式继承"></a>寄生式继承</h2><p>寄生式继承的思路是，创建一个仅用于封装继承过程的函数，该函数在内部以某种方式增强对象，最后返回这个对象。如下面的例子所示</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">createAnother</span>(<span class="params">original</span>)</span>&#123;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">var</span> clone = object(original); <span class="comment">//通过调用函数创建一个新对象</span></span><br><span class="line">    </span><br><span class="line">    clone.sayHi = <span class="function"><span class="keyword">function</span>(<span class="params"></span>)</span>&#123;  <span class="comment">// 某种方式增强这个对象</span></span><br><span class="line">        <span class="built_in">console</span>.log(<span class="string">"hi"</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> clone;  <span class="comment">// 返回这个对象</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> person = &#123;</span><br><span class="line">    name: <span class="string">"james"</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> anotherPerson = createAnother(person);</span><br><span class="line"></span><br><span class="line">anotherPerson.sayHi(); <span class="comment">// "hi"</span></span><br></pre></td></tr></table></figure>
+<p>优点： 在主要考虑对象而不是自定义类型和构造函数的情况下，实现简单的继承。</p>
+<p>缺点：使用该继承方式，在为对象添加函数的时候，没有办法做到函数的复用。</p>
+<h2 id="寄生式组合继承"><a href="#寄生式组合继承" class="headerlink" title="寄生式组合继承"></a><a href="#寄生式组合继承" title="寄生式组合继承"></a>寄生式组合继承</h2><p>前面我们提到过了组合继承的缺点，由于调用了两次超类的构造函数，导致基类的原型对象中增添了不必要的超类的实例对象中的所有属性。</p>
+<p>寄生式组合继承就是用来解决这个问题，它与组合继承不同的地方主要是，在继承原型时，我们继承的不是超类的实例对象，而是原型对象是超类原型对象的一个实例对象，这样就解决了基类的原型对象中增添了不必要的超类的实例对象中的所有属性d的问题。</p>
+<p>我们可以封装继承原型时函数如下：</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">inheritPrototype</span>(<span class="params">subType, superType</span>)</span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">var</span> prototype = object(superType.prototype); <span class="comment">// 创建原型对象是超类原型对象的一个实例对象</span></span><br><span class="line">  </span><br><span class="line">    prototype.constructor = subType; <span class="comment">// 弥补因为重写原型而失去的默认的 constructor 属性。</span></span><br><span class="line"> </span><br><span class="line">    subType.prototype = prototype; <span class="comment">// 实现原型继承</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>优点：效率高，避免了在 SubType.prototype 上创建不必要的属性。与此同时还能保持原型链不变，开发人员普遍认为寄生组合式继承是引用类型最理想的继承范式。</p>
+<p> <a href="http://cavszhouyou.top/JavaScript%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3%E4%B9%8B%E7%BB%A7%E6%89%BF.html" target="_blank" rel="noopener">原文地址</a></p>
             
 
         </div>
     </div>
     <div id="post-footer" class="post-footer main-content-wrap">
-        
-            <div class="post-footer-tags">
-                <span class="text-color-light text-small">标签</span><br>
-                
-    <a class="tag tag--primary tag--small t-link" href="/all-tags/javascript-面试/">javascript 面试</a>
-
-            </div>
         
         
             <div class="post-actions-wrap">
@@ -289,8 +279,7 @@
         <ul class="post-actions post-action-nav">
             <li class="post-action">
                 
-                    
-                    <a class="post-action-btn btn btn--default tooltip--top" href="/2021/02/23/JavaScript深入理解之继承/" data-tooltip="JavaScript深入理解之继承" aria-label="上一篇: JavaScript深入理解之继承">
+                    <a class="post-action-btn btn btn--disabled">
                 
                     <i class="fa fa-angle-left" aria-hidden="true"></i>
                     <span class="hide-xs hide-sm text-small icon-ml">上一篇</span>
@@ -299,7 +288,7 @@
             <li class="post-action">
                 
                     
-                    <a class="post-action-btn btn btn--default tooltip--top" href="/2021/02/23/JavaScript深入理解之对象创建/" data-tooltip="JavaScript深入理解之对象创建" aria-label="下一篇: JavaScript深入理解之对象创建">
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2021/02/23/js的原型和原型链/" data-tooltip="js的原型和原型链" aria-label="下一篇: js的原型和原型链">
                 
                     <span class="hide-xs hide-sm text-small icon-mr">下一篇</span>
                     <i class="fa fa-angle-right" aria-hidden="true"></i>
@@ -317,7 +306,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2021/02/23/js的原型和原型链/" title="分享到 Facebook">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2021/02/23/JavaScript深入理解之继承/" title="分享到 Facebook">
                     <i class="fab fa-facebook" aria-hidden="true"></i>
                 </a>
             </li>
@@ -325,7 +314,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2021/02/23/js的原型和原型链/" title="分享到 Twitter">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2021/02/23/JavaScript深入理解之继承/" title="分享到 Twitter">
                     <i class="fab fa-twitter" aria-hidden="true"></i>
                 </a>
             </li>
@@ -333,7 +322,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2021/02/23/js的原型和原型链/" title="分享到 Google+">
+                <a class="post-action-btn btn btn--default" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2021/02/23/JavaScript深入理解之继承/" title="分享到 Google+">
                     <i class="fab fa-google-plus" aria-hidden="true"></i>
                 </a>
             </li>
@@ -341,7 +330,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2021/02/23/js的原型和原型链/" title="分享到 Weibo">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2021/02/23/JavaScript深入理解之继承/" title="分享到 Weibo">
                     <i class="fab fa-weibo" aria-hidden="true"></i>
                 </a>
             </li>
@@ -349,7 +338,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2021/02/23/js的原型和原型链/&amp;title=js的原型和原型链" title="分享到 QQ">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2021/02/23/JavaScript深入理解之继承/&amp;title=JavaScript深入理解之继承" title="分享到 QQ">
                     <i class="fab fa-qq" aria-hidden="true"></i>
                 </a>
             </li>
@@ -357,7 +346,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2021/02/23/js的原型和原型链/" title="分享到 Qzone">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2021/02/23/JavaScript深入理解之继承/" title="分享到 Qzone">
                     <i class="fa fa-star" aria-hidden="true"></i>
                 </a>
             </li>
@@ -395,8 +384,7 @@
         <ul class="post-actions post-action-nav">
             <li class="post-action">
                 
-                    
-                    <a class="post-action-btn btn btn--default tooltip--top" href="/2021/02/23/JavaScript深入理解之继承/" data-tooltip="JavaScript深入理解之继承" aria-label="上一篇: JavaScript深入理解之继承">
+                    <a class="post-action-btn btn btn--disabled">
                 
                     <i class="fa fa-angle-left" aria-hidden="true"></i>
                     <span class="hide-xs hide-sm text-small icon-ml">上一篇</span>
@@ -405,7 +393,7 @@
             <li class="post-action">
                 
                     
-                    <a class="post-action-btn btn btn--default tooltip--top" href="/2021/02/23/JavaScript深入理解之对象创建/" data-tooltip="JavaScript深入理解之对象创建" aria-label="下一篇: JavaScript深入理解之对象创建">
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2021/02/23/js的原型和原型链/" data-tooltip="js的原型和原型链" aria-label="下一篇: js的原型和原型链">
                 
                     <span class="hide-xs hide-sm text-small icon-mr">下一篇</span>
                     <i class="fa fa-angle-right" aria-hidden="true"></i>
@@ -423,7 +411,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2021/02/23/js的原型和原型链/" title="分享到 Facebook">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2021/02/23/JavaScript深入理解之继承/" title="分享到 Facebook">
                     <i class="fab fa-facebook" aria-hidden="true"></i>
                 </a>
             </li>
@@ -431,7 +419,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2021/02/23/js的原型和原型链/" title="分享到 Twitter">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2021/02/23/JavaScript深入理解之继承/" title="分享到 Twitter">
                     <i class="fab fa-twitter" aria-hidden="true"></i>
                 </a>
             </li>
@@ -439,7 +427,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2021/02/23/js的原型和原型链/" title="分享到 Google+">
+                <a class="post-action-btn btn btn--default" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2021/02/23/JavaScript深入理解之继承/" title="分享到 Google+">
                     <i class="fab fa-google-plus" aria-hidden="true"></i>
                 </a>
             </li>
@@ -447,7 +435,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2021/02/23/js的原型和原型链/" title="分享到 Weibo">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2021/02/23/JavaScript深入理解之继承/" title="分享到 Weibo">
                     <i class="fab fa-weibo" aria-hidden="true"></i>
                 </a>
             </li>
@@ -455,7 +443,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2021/02/23/js的原型和原型链/&amp;title=js的原型和原型链" title="分享到 QQ">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2021/02/23/JavaScript深入理解之继承/&amp;title=JavaScript深入理解之继承" title="分享到 QQ">
                     <i class="fab fa-qq" aria-hidden="true"></i>
                 </a>
             </li>
@@ -463,7 +451,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2021/02/23/js的原型和原型链/" title="分享到 Qzone">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2021/02/23/JavaScript深入理解之继承/" title="分享到 Qzone">
                     <i class="fa fa-star" aria-hidden="true"></i>
                 </a>
             </li>
@@ -488,7 +476,7 @@
             
             
             <li class="share-option">
-                <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2021/02/23/js的原型和原型链/">
+                <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2021/02/23/JavaScript深入理解之继承/">
                     <i class="fab fa-facebook" aria-hidden="true"></i><span>分享到 Facebook</span>
                 </a>
             </li>
@@ -496,7 +484,7 @@
             
             
             <li class="share-option">
-                <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2021/02/23/js的原型和原型链/">
+                <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2021/02/23/JavaScript深入理解之继承/">
                     <i class="fab fa-twitter" aria-hidden="true"></i><span>分享到 Twitter</span>
                 </a>
             </li>
@@ -504,7 +492,7 @@
             
             
             <li class="share-option">
-                <a class="share-option-btn" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2021/02/23/js的原型和原型链/">
+                <a class="share-option-btn" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2021/02/23/JavaScript深入理解之继承/">
                     <i class="fab fa-google-plus" aria-hidden="true"></i><span>分享到 Google+</span>
                 </a>
             </li>
@@ -512,7 +500,7 @@
             
             
             <li class="share-option">
-                <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2021/02/23/js的原型和原型链/">
+                <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2021/02/23/JavaScript深入理解之继承/">
                     <i class="fab fa-weibo" aria-hidden="true"></i><span>分享到 Weibo</span>
                 </a>
             </li>
@@ -520,7 +508,7 @@
             
             
             <li class="share-option">
-                <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2021/02/23/js的原型和原型链/&amp;title=js的原型和原型链">
+                <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2021/02/23/JavaScript深入理解之继承/&amp;title=JavaScript深入理解之继承">
                     <i class="fab fa-qq" aria-hidden="true"></i><span>分享到 QQ</span>
                 </a>
             </li>
@@ -528,7 +516,7 @@
             
             
             <li class="share-option">
-                <a class="share-option-btn" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2021/02/23/js的原型和原型链/">
+                <a class="share-option-btn" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2021/02/23/JavaScript深入理解之继承/">
                     <i class="fa fa-star" aria-hidden="true"></i><span>分享到 Qzone</span>
                 </a>
             </li>
