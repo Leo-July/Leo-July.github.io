@@ -15,22 +15,22 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"},"articleBody":"\n构造函数创建对象：\n123456function Person() &#123;&#125;var person = new Person();person.name = &apos;Kevin&apos;;console.log(person.name)\nPerson 就是一个构造函数，我们使用 new 创建了一个实例对象 person\nprototype每个函数都有一个 prototype 属性每一个JavaScript对象(null除外)在创建的时候就会与之关联另一个对象，这个对象就是我们所说的原型，每一个对象都会从原型”继承”属性。\n123456789function Person() &#123;&#125;Person.prototype.name = &apos;Kevin&apos;;var person1 = new Person();var person2 = new Person();console.log(person1.name) console.log(person2.name)\n\nimage.png\nproto每一个JavaScript对象(除了 null )都具有的一个属性，叫proto，这个属性会指向该对象的原型\n12345function Person() &#123;&#125;var person = new Person();console.log(person.__proto__ === Person.prototype);\n\nimage.png\nconstructor每个原型都有一个 constructor 属性指向关联的构造函数 实例原型指向构造函数\n1234function Person() &#123;&#125;console.log(Person === Person.prototype.constructor);\n\nimage.png\n12345678910function Person() &#123;&#125;var person = new Person();console.log(person.__proto__ == Person.prototype) console.log(Person.prototype.constructor == Person) console.log(Object.getPrototypeOf(person) === Person.prototype)\n实例与原型12345678910111213function Person() &#123;&#125;Person.prototype.name = &apos;Kevin&apos;;var person = new Person();person.name = &apos;Daisy&apos;;console.log(person.name) delete person.name;console.log(person.name)\n在这个例子中，我们给实例对象 person 添加了 name 属性，当我们打印 person.name 的时候，结果自然为 Daisy。\n但是当我们删除了 person 的 name 属性时，读取 person.name，从 person 对象中找不到 name 属性就会从 person 的原型也就是 person.proto ，也就是 Person.prototype中查找，幸运的是我们找到了 name 属性，结果为 Kevin。\n原型与原型123var obj = new Object();obj.name = &apos;Kevin&apos;console.log(obj.name)\n\nimage.png\n原型链console.log(Object.prototype.__proto__ === null) // true  \n\nimage.png\nJavaScript 默认并不会复制对象的属性，相反，JavaScript 只是在两个对象之间创建一个关联，这样，一个对象就可以通过委托访问另一个对象的属性和函数，所以与其叫继承，委托的说法反而更准确些\n 原文链接","dateCreated":"2021-02-23T16:57:35+08:00","dateModified":"2021-02-23T16:59:57+08:00","datePublished":"2021-02-23T16:57:35+08:00","description":"\n","headline":"js的原型和原型链","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://leo-july.github.io/2021/02/23/js的原型和原型链/"},"publisher":{"@type":"Organization","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180","logo":{"@type":"ImageObject","url":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"}},"url":"https://leo-july.github.io/2021/02/23/js的原型和原型链/","keywords":"javascript 面试"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"},"articleBody":"\n构造函数创建对象：\n123456function Person() &#123;&#125;var person = new Person();person.name = &apos;Kevin&apos;;console.log(person.name)\nPerson 就是一个构造函数，我们使用 new 创建了一个实例对象 person\nprototype每个函数都有一个 prototype 属性每一个JavaScript对象(null除外)在创建的时候就会与之关联另一个对象，这个对象就是我们所说的原型，每一个对象都会从原型”继承”属性。\n123456789function Person() &#123;&#125;Person.prototype.name = &apos;Kevin&apos;;var person1 = new Person();var person2 = new Person();console.log(person1.name) console.log(person2.name)\n\nimage.png\nproto每一个JavaScript对象(除了 null )都具有的一个属性，叫proto，这个属性会指向该对象的原型\n12345function Person() &#123;&#125;var person = new Person();console.log(person.__proto__ === Person.prototype);\n\nimage.png\nconstructor每个原型都有一个 constructor 属性指向关联的构造函数 实例原型指向构造函数\n1234function Person() &#123;&#125;console.log(Person === Person.prototype.constructor);\n\nimage.png\n12345678910function Person() &#123;&#125;var person = new Person();console.log(person.__proto__ == Person.prototype) console.log(Person.prototype.constructor == Person) console.log(Object.getPrototypeOf(person) === Person.prototype)\n实例与原型12345678910111213function Person() &#123;&#125;Person.prototype.name = &apos;Kevin&apos;;var person = new Person();person.name = &apos;Daisy&apos;;console.log(person.name) delete person.name;console.log(person.name)\n在这个例子中，我们给实例对象 person 添加了 name 属性，当我们打印 person.name 的时候，结果自然为 Daisy。\n但是当我们删除了 person 的 name 属性时，读取 person.name，从 person 对象中找不到 name 属性就会从 person 的原型也就是 person.proto ，也就是 Person.prototype中查找，幸运的是我们找到了 name 属性，结果为 Kevin。\n原型与原型123var obj = new Object();obj.name = &apos;Kevin&apos;console.log(obj.name)\n\nimage.png\n原型链console.log(Object.prototype.__proto__ === null) // true  \n\nimage.png\nJavaScript 默认并不会复制对象的属性，相反，JavaScript 只是在两个对象之间创建一个关联，这样，一个对象就可以通过委托访问另一个对象的属性和函数，所以与其叫继承，委托的说法反而更准确些\n 原文链接","dateCreated":"2021-02-23T16:57:35+08:00","dateModified":"2021-02-23T17:14:58+08:00","datePublished":"2021-02-23T16:57:35+08:00","description":"\n","headline":"js的原型和原型链","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://leo-july.github.io/2021/02/23/js的原型和原型链/"},"publisher":{"@type":"Organization","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180","logo":{"@type":"ImageObject","url":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"}},"url":"https://leo-july.github.io/2021/02/23/js的原型和原型链/","keywords":"javascript 面试"}</script>
     <meta name="keywords" content="javascript">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="js的原型和原型链">
 <meta property="og:url" content="https://leo-july.github.io/2021/02/23/js的原型和原型链/index.html">
 <meta property="og:site_name" content="leo July&#39;s blog">
 <meta property="og:locale" content="zh-cn">
-<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/1490251-48851bf37a08259d.png">
-<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/1490251-e7476a8697e97aab.png">
-<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/1490251-0cac772635e8a128.png">
-<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/1490251-293b8fe01cf2ef5f.png">
-<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/1490251-3089c135df71c956.png">
-<meta property="og:updated_time" content="2021-02-23T08:59:57.173Z">
+<meta property="og:image" content="https://leo-july.github.io/2021/02/23/js的原型和原型链/1490251-48851bf37a08259d.png">
+<meta property="og:image" content="https://leo-july.github.io/2021/02/23/js的原型和原型链/1490251-e7476a8697e97aab.png">
+<meta property="og:image" content="https://leo-july.github.io/2021/02/23/js的原型和原型链/1490251-0cac772635e8a128.png">
+<meta property="og:image" content="https://leo-july.github.io/2021/02/23/js的原型和原型链/1490251-293b8fe01cf2ef5f.png">
+<meta property="og:image" content="https://leo-july.github.io/2021/02/23/js的原型和原型链/1490251-3089c135df71c956.png">
+<meta property="og:updated_time" content="2021-02-23T09:14:58.042Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="js的原型和原型链">
-<meta name="twitter:image" content="https://upload-images.jianshu.io/upload_images/1490251-48851bf37a08259d.png">
+<meta name="twitter:image" content="https://leo-july.github.io/2021/02/23/js的原型和原型链/1490251-48851bf37a08259d.png">
     
     
         
@@ -248,25 +248,25 @@
 <p>Person 就是一个构造函数，我们使用 new 创建了一个实例对象 person</p>
 <h5 id="prototype"><a href="#prototype" class="headerlink" title="prototype"></a>prototype</h5><p>每个函数都有一个 prototype 属性<br>每一个JavaScript对象(null除外)在创建的时候就会与之关联另一个对象，这个对象就是我们所说的原型，每一个对象都会从原型”继承”属性。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">function Person() &#123;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">Person.prototype.name = &apos;Kevin&apos;;</span><br><span class="line">var person1 = new Person();</span><br><span class="line">var person2 = new Person();</span><br><span class="line">console.log(person1.name) </span><br><span class="line">console.log(person2.name)</span><br></pre></td></tr></table></figure>
-<p><img src="https://upload-images.jianshu.io/upload_images/1490251-48851bf37a08259d.png" alt=""></p>
+<p><img src="1490251-48851bf37a08259d.png" alt=""></p>
 <p>image.png</p>
 <h5 id="proto"><a href="#proto" class="headerlink" title="proto"></a><strong>proto</strong></h5><p>每一个JavaScript对象(除了 null )都具有的一个属性，叫<strong>proto</strong>，这个属性会指向该对象的原型</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">function Person() &#123;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line">var person = new Person();</span><br><span class="line">console.log(person.__proto__ === Person.prototype);</span><br></pre></td></tr></table></figure>
-<p><img src="https://upload-images.jianshu.io/upload_images/1490251-e7476a8697e97aab.png" alt=""></p>
+<p><img src="1490251-e7476a8697e97aab.png" alt=""></p>
 <p>image.png</p>
 <h5 id="constructor-NaN"><a href="#constructor-NaN" class="headerlink" title="constructor"></a>constructor</h5><p>每个原型都有一个 constructor 属性指向关联的构造函数 实例原型指向构造函数</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">function Person() &#123;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line">console.log(Person === Person.prototype.constructor);</span><br></pre></td></tr></table></figure>
-<p><img src="https://upload-images.jianshu.io/upload_images/1490251-0cac772635e8a128.png" alt=""></p>
+<p><img src="1490251-0cac772635e8a128.png" alt=""></p>
 <p>image.png</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">function Person() &#123;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">var person = new Person();</span><br><span class="line"></span><br><span class="line">console.log(person.__proto__ == Person.prototype) </span><br><span class="line">console.log(Person.prototype.constructor == Person) </span><br><span class="line"></span><br><span class="line">console.log(Object.getPrototypeOf(person) === Person.prototype)</span><br></pre></td></tr></table></figure>
 <h6 id="实例与原型"><a href="#实例与原型" class="headerlink" title="实例与原型"></a>实例与原型</h6><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">function Person() &#123;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">Person.prototype.name = &apos;Kevin&apos;;</span><br><span class="line"></span><br><span class="line">var person = new Person();</span><br><span class="line"></span><br><span class="line">person.name = &apos;Daisy&apos;;</span><br><span class="line">console.log(person.name) </span><br><span class="line"></span><br><span class="line">delete person.name;</span><br><span class="line">console.log(person.name)</span><br></pre></td></tr></table></figure>
 <p>在这个例子中，我们给实例对象 person 添加了 name 属性，当我们打印 person.name 的时候，结果自然为 Daisy。</p>
 <p>但是当我们删除了 person 的 name 属性时，读取 person.name，从 person 对象中找不到 name 属性就会从 person 的原型也就是 person.<strong>proto</strong> ，也就是 Person.prototype中查找，幸运的是我们找到了 name 属性，结果为 Kevin。</p>
 <h5 id="原型与原型"><a href="#原型与原型" class="headerlink" title="原型与原型"></a>原型与原型</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">var obj = new Object();</span><br><span class="line">obj.name = &apos;Kevin&apos;</span><br><span class="line">console.log(obj.name)</span><br></pre></td></tr></table></figure>
-<p><img src="https://upload-images.jianshu.io/upload_images/1490251-293b8fe01cf2ef5f.png" alt=""></p>
+<p><img src="1490251-293b8fe01cf2ef5f.png" alt=""></p>
 <p>image.png</p>
 <h4 id="原型链"><a href="#原型链" class="headerlink" title="原型链"></a>原型链</h4><p><code>console.log(Object.prototype.__proto__ === null) // true</code>  </p>
-<p><img src="https://upload-images.jianshu.io/upload_images/1490251-3089c135df71c956.png" alt=""></p>
+<p><img src="1490251-3089c135df71c956.png" alt=""></p>
 <p>image.png</p>
 <p>JavaScript 默认并不会<strong>复制</strong>对象的属性，相反，JavaScript 只是在两个对象之间创建一个<strong>关联</strong>，这样，一个对象就可以通过委托访问另一个对象的属性和函数，所以与其叫继承，<strong>委托</strong>的说法反而更准确些</p>
 <p> <a href="https://www.jianshu.com/p/be7c95714586" target="_blank" rel="noopener">原文链接</a></p>
@@ -308,7 +308,7 @@
     </nav>
     <ul class="post-actions post-action-share">
         <li class="post-action hide-lg hide-md hide-sm">
-            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Diesen Beitrag teilen">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
                 <i class="fa fa-share-alt" aria-hidden="true"></i>
             </a>
         </li>
@@ -364,7 +364,7 @@
         
         <li class="post-action">
             
-                <a class="post-action-btn btn btn--default" href="#" aria-label="Nach oben">
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
             
                 <i class="fa fa-list" aria-hidden="true"></i>
             </a>
@@ -413,7 +413,7 @@
     </nav>
     <ul class="post-actions post-action-share">
         <li class="post-action hide-lg hide-md hide-sm">
-            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Diesen Beitrag teilen">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
                 <i class="fa fa-share-alt" aria-hidden="true"></i>
             </a>
         </li>
@@ -469,7 +469,7 @@
         
         <li class="post-action">
             
-                <a class="post-action-btn btn btn--default" href="#" aria-label="Nach oben">
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
             
                 <i class="fa fa-list" aria-hidden="true"></i>
             </a>
