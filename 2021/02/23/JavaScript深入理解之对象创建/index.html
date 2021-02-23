@@ -1,0 +1,922 @@
+
+<!DOCTYPE html>
+<html lang="zh-cn">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="leo July&#39;s blog">
+    <title>JavaScript深入理解之对象创建 - leo July&#39;s blog</title>
+    <meta name="author" content="Leo July">
+    
+        <meta name="keywords" content="javascript">
+    
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"},"articleBody":"\n发表于 2018-08-04 | 分类于 前端 ， JavaScript | 0 | 本文总阅读量 2971次\n字数统计: 2,499字 | 阅读时长 ≈ 10分钟\n\n\n写在前面在 JavaScript 中虽然 Object 构造函数或对象字面量都可以用来创建单个对象，但是这些方法都有一个明显的缺点：使用同一个接口创建很多对象，会产生大量的重复代码。为了解决这些问题，人们提出了很多对象创建的解决办法，下面是我对 JavaScript 对象创建的一些理解和总结。\n工厂模式工厂模式是软件工程领域一种广为人知的设计模式，这种模式抽离了创建对象的具体过程。考虑到在 ECMAScript 中无法创建类，开发人员发明以一种函数，用函数来封装以特定接口创建对象的细节。如下面的例子所示\n1234567891011121314function createPerson(name, age, job)&#123;    var o = new Object();    o.name = name;    o.age = age;    o.job = job;    o.sayName = function()&#123;        alert(this.name);    &#125;;    return o;&#125;var person1 = createPerson(\"james\"，9，\"student\");var person2 = createPerson(\"kobe\"，9，\"student\");\n优点：解决了创建多个相似对象时，代码的复用问题\n缺点：使用工厂模式创建的对象，没有解决对象识别的问题（就是怎样知道一个对象的类型是什么）\n构造函数模式前面我们提到过，ECMAScript 中的构造函数可用来创建特定类型的对象。像 Object 和 Array 这样的原生构造函数，在运行时会自动出现在执行环境中。此外我们也可以创建自定义的构造函数，从而定义对象类型的属性和方法。我们使用构造函数的方法可以将前面的例子重写如下\n12345678910111213function createPerson(name, age, job)&#123;    this.name = name;    this.age = age;    this.job = job;    this.sayName = function()&#123;        alert(this.name);    &#125;;    return o;&#125;var person1 = new createPerson(\"james\"，9，\"student\");var person2 = new createPerson(\"kobe\"，9，\"student\");\n当我们使用构造函数实例化一个对象的时候，对象中会包含一个 __proto__ 属性指向构造函数原型对象，而原型对象中则包含一个 constructor 属性指向构造函数。因此在实例对象中我们可以通过原型链来访问到 constructor 属性，从而判断对象的类型。\n优点：解决了工厂模式中对象类型无法识别的问题，并且创建自定义的构造函数意味着将来可以将它的实例标识为一种特定的类型。\n缺点：我们知道 ECMAScript 中的函数是对象，在使用构造函数创建对象时，每个方法都会在实例对象中重新创建一遍。拿上面的例子举例，这意味着每创建一个对象，我们就会创建一个 sayName 函数的实例，但它们其实做的都是同样的工作，因此这样便会造成内存的浪费。\n原型模式我们知道，我们创建的每一个函数都有一个 prototype 属性，这个属性指向函数的原型对象，这个对象的用途是包含可以由特定类型的所有实例共享的属性和方法。我们通过使用原型对象可以让所有的对象实例共享它所包含的属性和方法，因此这样也解决了代码的复用问题。如下面所示：\n12345678910111213141516171819function Person()&#123;&#125;Person.prototype.name = \"james\";Person.prototype.age = 9;Person.prototype.job = \"student\";Person.prototype.sayName = function()&#123;    alert(this.name);&#125;var person1 = new Person();person1.sayName(); // \"james\"var person2 = new Person();person2.sayName(); // \"james\"console.log(person1.sayName === person2.sayName) // true\n与构造函数模式不同的是，原型对象上的属性和方法是有所有实例所共享的。也就是说，上面 person1 和 person2 访问的都是同一组属性和同一个 sayName() 函数。\n优点：解决了构造函数模式中多次创建相同函数对象的问题，所有的实例可以共享同一组属性和函数。\n缺点：\n\n首先第一个问题是原型模式省略了构造函数模式传递初始化参数的过程，所有的实例在默认情况下都会取得默认的属性值，会在一定程度上造成不方便。\n\n因为所有的实例都是共享一组属性，对于包含基本值的属性来说没有问题，但是对于包含引用类型的值来说（例如数组对象），所有的实例都是对同一个引用类型进行操作，那么属性的操作就不是独立的，最后导致读写的混乱。我们创建的实例一般都是要有属于自己的全部属性的，因此单独使用原型模式的情况是很少存在的。\n\n\n组合使用构造函数模式和原型模式创建自定义类型的最常见方式，就是组合使用构造函数模式和原型模式。构造函数模式用于定义实例属性，而原型模式用于定义方法和共享的属性。使用这种模式的好处就是，每个实例都会拥有自己的一份实例属性的副本，但同时又共享着对方法的引用，最大限度地节省了内存。而且这中混成模式还支持向构造函数传递参数，可以说是及两种模式之长。\n下面我们通过这种方法来重写一下上面的例子\n1234567891011121314151617181920function Person(name, age, job)&#123;    this.name = name;    this.age = age;    this.job = job;&#125;Person.prototype = &#123;    constructor: Person,    sayName: function()&#123;        alert(this.name);    &#125;&#125;var person1 = new createPerson(\"james\"，9，\"student\");var person2 = new createPerson(\"kobe\"，9，\"student\");console.log(person1.name); // \"james\"console.log(person2.name); // \"kobe\"console.log(person1.sayName === person2.sayName); // true\n优点：采用了构造函数模式和原型模式的优点，这种混成模式是目前使用最广泛，认同度最高的一种创建自定类型的方法。\n缺点：由于使用了两种模式，因此对于代码的封装性来说不是很好。\n动态原型模式由于上面混成模式存在封装性的问题，动态原型模式是解决这个问题的一个方案。这个方法把所有信息都封装到了构造函数中，而在构造函数中通过判断只初始化一次原型。下面我们来看一下例子\n1234567891011121314151617function Person(name, age, job)&#123;    this.name = name;    this.age = age;    this.job = job;    if(typeof this.sayName !== \"function\" )&#123;        Person.prototype.sayName: function()&#123;            alert(this.name);        &#125;     &#125; &#125;var person1 = new createPerson(\"james\"，9，\"student\");person1.sayName(); // \"james\"\n注意在 if 语句中检查的可以是初始化后应该存在的任何属性或方法，不必要检查每一个方法和属性，只需要检查一个就行。\n优点：解决了混成模式中封装性的问题\n寄生构造函数模式如果在前面几种模式不适用的情况下，可以使用寄生构造函数模式。这种模式的基本思想是创建一个函数，该函数的作用仅仅是封装创建对象的代码，然后返回新创建的对象。如下面的例子所示：\n123456789101112function Person(name, age, job)&#123;    var o = new Object();    o.name = name;    o.age = age;    o.job = job;    o.sayName = function()&#123;        alert(this.name);    &#125;;    return o;&#125;var person1 = new Person(\"james\"，9，\"student\");\n通过上面的例子我们可以发现，其实这个模式和工厂模式基本上是一摸一样的，只不过我们是采用 new 操作符最后来创建对象。\n注意在构造函数不返回值的情况下，默认会返回新创建的对象，而通过在构造函数的末尾添加一个 return 语句，可以重写调用构造函数时返回的值。\n优点：我对这个模式的理解是，它主要是基于一个已有的类型，在实例化时对实例化的对象进行扩展。这样既不用修改原来的构造函数，也达到了扩展对象的目的。\n缺点：和工厂模式一样的问题，不能依赖 instanceof 操作符来确定对象的类型。\n稳妥构造函数模式Douglas Crockford 发明了 JavaScript 中的稳妥对象这个概念。所谓稳妥对象，指的就是，没有公共属性，而且其方法也不使用 this 的对象。稳妥对象最适合在一些安全的环境中（这些环境中会禁止使用 this 和 new），或者在防止数据被其他应用程序改动时使用。\n稳妥构造函数遵循与寄生构造函数类似的模式，但有两点不同：一是新创建的对象的实例方法不引用 this ；二是不使用 new 操作符调用构造函数。因此我们可以将前面的例子改写如下：\n12345678910111213141516171819function Person(name, age, job)&#123;    //创建要返回的对象    var o = new Object();    //可以在这里定义私有变量和函数    //添加方法    o.sayName = function()&#123;        console.log(this.name);    &#125;    //返回对象    return o;&#125; var person1 =  Person(\"james\"，9，\"student\");person1.sayName(); // \"james\"\n优点：以上面为例，除了 sayName 方法外，没有别的方法可以访问数据成员，这就是稳妥构造函数提供的安全性。\n缺点：和寄生构造函数一样，没有办法使用 instanceof 操作符来判断对象的类型\n原文地址 CavsZhouyou’s Blog","dateCreated":"2021-02-23T14:24:20+08:00","dateModified":"2021-02-23T14:26:55+08:00","datePublished":"2021-02-23T14:24:20+08:00","description":"\n","headline":"JavaScript深入理解之对象创建","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://leo-july.github.io/2021/02/23/JavaScript深入理解之对象创建/"},"publisher":{"@type":"Organization","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180","logo":{"@type":"ImageObject","url":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"}},"url":"https://leo-july.github.io/2021/02/23/JavaScript深入理解之对象创建/","keywords":"面试 前端 javascript"}</script>
+    <meta name="keywords" content="javascript">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="JavaScript深入理解之对象创建">
+<meta property="og:url" content="https://leo-july.github.io/2021/02/23/JavaScript深入理解之对象创建/index.html">
+<meta property="og:site_name" content="leo July&#39;s blog">
+<meta property="og:locale" content="zh-cn">
+<meta property="og:image" content="https://cavszhouyou-1254093697.cos.ap-chongqing.myqcloud.com/peitu19-1.jpg">
+<meta property="og:updated_time" content="2021-02-23T06:26:55.377Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="JavaScript深入理解之对象创建">
+<meta name="twitter:image" content="https://cavszhouyou-1254093697.cos.ap-chongqing.myqcloud.com/peitu19-1.jpg">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"/>
+    
+    
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="/assets/css/style-du2xmrqdqrl2ollgeiw050kpl6l4nbyz7bumjuurjgsxyopifvukebxc9lqe.min.css">
+    <!--STYLES END-->
+    
+
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">leo July&#39;s blog</a>
+    </div>
+    
+        
+            <a class="header-right-icon open-algolia-search" href="#search">
+        
+        
+            <i class="search fa-lg"></i>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180" alt="作者的图片">
+                </a>
+                <h4 class="sidebar-profile-name">Leo July</h4>
+                <!--  -->
+                    <h5 class="sidebar-profile-bio">vue,weex,ES6,js,jq,html5,less,css3,git,webpack</h5>
+                <!--  -->
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/ " title="首页">
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">首页</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-categories" title="分类">
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">分类</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-tags" title="标签">
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">标签</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-archives" title="归档">
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">归档</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link open-algolia-search" href="#search" title="搜索">
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">搜索</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="#about" title="关于">
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">关于</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://github.com/Leo-July" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="mailto:15563861385@163.com" target="_blank" rel="noopener" title="Emial">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Emial</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://xuebin.me" target="_blank" rel="noopener" title="xuebin.me">
+                    
+                        <i class="sidebar-button-icon fa fa-link" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">xuebin.me</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://zhangmiao.cc/" target="_blank" rel="noopener" title="zhangmiao.cc">
+                    
+                        <i class="sidebar-button-icon fa fa-link" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">zhangmiao.cc</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+            <div id="main" data-behavior="4"
+                 class="
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+        <div class="post-header main-content-wrap text-left">
+    
+        <h1 class="post-title">
+            JavaScript深入理解之对象创建
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2021-02-23T14:24:20+08:00">
+	
+		    2月 23, 2021
+    	
+    </time>
+    
+        <span>发布在 </span>
+        
+    <a class="category-link" href="/all-categories/面试/">面试</a>
+
+
+    
+</div>
+
+    
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<p>发表于 2018-08-04 | 分类于 <a href="http://cavszhouyou.top/categories/%E5%89%8D%E7%AB%AF/" target="_blank" rel="noopener">前端</a> ， <a href="http://cavszhouyou.top/categories/%E5%89%8D%E7%AB%AF/JavaScript/" target="_blank" rel="noopener">JavaScript</a> | <a href="http://cavszhouyou.top/JavaScript%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3%E4%B9%8B%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA.html#SOHUCS" target="_blank" rel="noopener">0</a> | 本文总阅读量 2971次</p>
+<p>字数统计: 2,499字 | 阅读时长 ≈ 10分钟</p>
+<p><a href="https://cavszhouyou-1254093697.cos.ap-chongqing.myqcloud.com/peitu19-1.jpg" target="_blank" rel="noopener"><img src="https://cavszhouyou-1254093697.cos.ap-chongqing.myqcloud.com/peitu19-1.jpg" alt="">
+</a></p>
+<h2 id="写在前面"><a href="#写在前面" class="headerlink" title="写在前面"></a><a href="#写在前面" title="写在前面"></a>写在前面</h2><p>在 JavaScript 中虽然 Object 构造函数或对象字面量都可以用来创建单个对象，但是这些方法都有一个明显的缺点：使用同一个接口创建很多对象，会产生大量的重复代码。为了解决这些问题，人们提出了很多对象创建的解决办法，下面是我对 JavaScript 对象创建的一些理解和总结。</p>
+<h2 id="工厂模式"><a href="#工厂模式" class="headerlink" title="工厂模式"></a><a href="#工厂模式" title="工厂模式"></a>工厂模式</h2><p>工厂模式是软件工程领域一种广为人知的设计模式，这种模式抽离了创建对象的具体过程。考虑到在 ECMAScript 中无法创建类，开发人员发明以一种函数，用函数来封装以特定接口创建对象的细节。如下面的例子所示</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">createPerson</span>(<span class="params">name, age, job</span>)</span>&#123;</span><br><span class="line">    <span class="keyword">var</span> o = <span class="keyword">new</span> <span class="built_in">Object</span>();</span><br><span class="line">    o.name = name;</span><br><span class="line">    o.age = age;</span><br><span class="line">    o.job = job;</span><br><span class="line">    o.sayName = <span class="function"><span class="keyword">function</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">        alert(<span class="keyword">this</span>.name);</span><br><span class="line">    &#125;;</span><br><span class="line">    <span class="keyword">return</span> o;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> person1 = createPerson(<span class="string">"james"</span>，<span class="number">9</span>，<span class="string">"student"</span>);</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> person2 = createPerson(<span class="string">"kobe"</span>，<span class="number">9</span>，<span class="string">"student"</span>);</span><br></pre></td></tr></table></figure>
+<p>优点：解决了创建多个相似对象时，代码的复用问题</p>
+<p>缺点：使用工厂模式创建的对象，没有解决对象识别的问题（就是怎样知道一个对象的类型是什么）</p>
+<h2 id="构造函数模式"><a href="#构造函数模式" class="headerlink" title="构造函数模式"></a><a href="#构造函数模式" title="构造函数模式"></a>构造函数模式</h2><p>前面我们提到过，ECMAScript 中的构造函数可用来创建特定类型的对象。像 Object 和 Array 这样的原生构造函数，在运行时会自动出现在执行环境中。此外我们也可以创建自定义的构造函数，从而定义对象类型的属性和方法。我们使用构造函数的方法可以将前面的例子重写如下</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">createPerson</span>(<span class="params">name, age, job</span>)</span>&#123;</span><br><span class="line">    <span class="keyword">this</span>.name = name;</span><br><span class="line">    <span class="keyword">this</span>.age = age;</span><br><span class="line">    <span class="keyword">this</span>.job = job;</span><br><span class="line">    <span class="keyword">this</span>.sayName = <span class="function"><span class="keyword">function</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">        alert(<span class="keyword">this</span>.name);</span><br><span class="line">    &#125;;</span><br><span class="line">    <span class="keyword">return</span> o;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> person1 = <span class="keyword">new</span> createPerson(<span class="string">"james"</span>，<span class="number">9</span>，<span class="string">"student"</span>);</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> person2 = <span class="keyword">new</span> createPerson(<span class="string">"kobe"</span>，<span class="number">9</span>，<span class="string">"student"</span>);</span><br></pre></td></tr></table></figure>
+<p>当我们使用构造函数实例化一个对象的时候，对象中会包含一个 __proto__ 属性指向构造函数原型对象，而原型对象中则包含一个 constructor 属性指向构造函数。因此在实例对象中我们可以通过原型链来访问到 constructor 属性，从而判断对象的类型。</p>
+<p>优点：解决了工厂模式中对象类型无法识别的问题，并且创建自定义的构造函数意味着将来可以将它的实例标识为一种特定的类型。</p>
+<p>缺点：我们知道 ECMAScript 中的函数是对象，在使用构造函数创建对象时，每个方法都会在实例对象中重新创建一遍。拿上面的例子举例，这意味着每创建一个对象，我们就会创建一个 sayName 函数的实例，但它们其实做的都是同样的工作，因此这样便会造成内存的浪费。</p>
+<h2 id="原型模式"><a href="#原型模式" class="headerlink" title="原型模式"></a><a href="#原型模式" title="原型模式"></a>原型模式</h2><p>我们知道，我们创建的每一个函数都有一个 prototype 属性，这个属性指向函数的原型对象，这个对象的用途是包含可以由特定类型的所有实例共享的属性和方法。我们通过使用原型对象可以让所有的对象实例共享它所包含的属性和方法，因此这样也解决了代码的复用问题。如下面所示：</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">Person</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">Person.prototype.name = <span class="string">"james"</span>;</span><br><span class="line">Person.prototype.age = <span class="number">9</span>;</span><br><span class="line">Person.prototype.job = <span class="string">"student"</span>;</span><br><span class="line">Person.prototype.sayName = <span class="function"><span class="keyword">function</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">    alert(<span class="keyword">this</span>.name);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> person1 = <span class="keyword">new</span> Person();</span><br><span class="line">person1.sayName(); <span class="comment">// "james"</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> person2 = <span class="keyword">new</span> Person();</span><br><span class="line">person2.sayName(); <span class="comment">// "james"</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="built_in">console</span>.log(person1.sayName === person2.sayName) <span class="comment">// true</span></span><br></pre></td></tr></table></figure>
+<p>与构造函数模式不同的是，原型对象上的属性和方法是有所有实例所共享的。也就是说，上面 person1 和 person2 访问的都是同一组属性和同一个 sayName() 函数。</p>
+<p>优点：解决了构造函数模式中多次创建相同函数对象的问题，所有的实例可以共享同一组属性和函数。</p>
+<p>缺点：</p>
+<ol>
+<li><p>首先第一个问题是原型模式省略了构造函数模式传递初始化参数的过程，所有的实例在默认情况下都会取得默认的属性值，会在一定程度上造成不方便。</p>
+</li>
+<li><p>因为所有的实例都是共享一组属性，对于包含基本值的属性来说没有问题，但是对于包含引用类型的值来说（例如数组对象），所有的实例都是对同一个引用类型进行操作，那么属性的操作就不是独立的，最后导致读写的混乱。我们创建的实例一般都是要有属于自己的全部属性的，因此单独使用原型模式的情况是很少存在的。</p>
+</li>
+</ol>
+<h2 id="组合使用构造函数模式和原型模式"><a href="#组合使用构造函数模式和原型模式" class="headerlink" title="组合使用构造函数模式和原型模式"></a><a href="#组合使用构造函数模式和原型模式" title="组合使用构造函数模式和原型模式"></a>组合使用构造函数模式和原型模式</h2><p>创建自定义类型的最常见方式，就是组合使用构造函数模式和原型模式。构造函数模式用于定义实例属性，而原型模式用于定义方法和共享的属性。使用这种模式的好处就是，每个实例都会拥有自己的一份实例属性的副本，但同时又共享着对方法的引用，最大限度地节省了内存。而且这中混成模式还支持向构造函数传递参数，可以说是及两种模式之长。</p>
+<p>下面我们通过这种方法来重写一下上面的例子</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">Person</span>(<span class="params">name, age, job</span>)</span>&#123;</span><br><span class="line">    <span class="keyword">this</span>.name = name;</span><br><span class="line">    <span class="keyword">this</span>.age = age;</span><br><span class="line">    <span class="keyword">this</span>.job = job;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">Person.prototype = &#123;</span><br><span class="line">    <span class="keyword">constructor</span>: Person,</span><br><span class="line">    sayName: function()&#123;</span><br><span class="line">        alert(<span class="keyword">this</span>.name);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> person1 = <span class="keyword">new</span> createPerson(<span class="string">"james"</span>，<span class="number">9</span>，<span class="string">"student"</span>);</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> person2 = <span class="keyword">new</span> createPerson(<span class="string">"kobe"</span>，<span class="number">9</span>，<span class="string">"student"</span>);</span><br><span class="line"></span><br><span class="line"><span class="built_in">console</span>.log(person1.name); <span class="comment">// "james"</span></span><br><span class="line"><span class="built_in">console</span>.log(person2.name); <span class="comment">// "kobe"</span></span><br><span class="line"><span class="built_in">console</span>.log(person1.sayName === person2.sayName); <span class="comment">// true</span></span><br></pre></td></tr></table></figure>
+<p>优点：采用了构造函数模式和原型模式的优点，这种混成模式是目前使用最广泛，认同度最高的一种创建自定类型的方法。</p>
+<p>缺点：由于使用了两种模式，因此对于代码的封装性来说不是很好。</p>
+<h2 id="动态原型模式"><a href="#动态原型模式" class="headerlink" title="动态原型模式"></a><a href="#动态原型模式" title="动态原型模式"></a>动态原型模式</h2><p>由于上面混成模式存在封装性的问题，动态原型模式是解决这个问题的一个方案。这个方法把所有信息都封装到了构造函数中，而在构造函数中通过判断只初始化一次原型。下面我们来看一下例子</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">Person</span>(<span class="params">name, age, job</span>)</span>&#123;</span><br><span class="line">    <span class="keyword">this</span>.name = name;</span><br><span class="line">    <span class="keyword">this</span>.age = age;</span><br><span class="line">    <span class="keyword">this</span>.job = job;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span>(<span class="keyword">typeof</span> <span class="keyword">this</span>.sayName !== <span class="string">"function"</span> )&#123;</span><br><span class="line"></span><br><span class="line">        Person.prototype.sayName: <span class="function"><span class="keyword">function</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">            alert(<span class="keyword">this</span>.name);</span><br><span class="line">        &#125; </span><br><span class="line">    &#125; </span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> person1 = <span class="keyword">new</span> createPerson(<span class="string">"james"</span>，<span class="number">9</span>，<span class="string">"student"</span>);</span><br><span class="line"></span><br><span class="line">person1.sayName(); <span class="comment">// "james"</span></span><br></pre></td></tr></table></figure>
+<p>注意在 if 语句中检查的可以是初始化后应该存在的任何属性或方法，不必要检查每一个方法和属性，只需要检查一个就行。</p>
+<p>优点：解决了混成模式中封装性的问题</p>
+<h2 id="寄生构造函数模式"><a href="#寄生构造函数模式" class="headerlink" title="寄生构造函数模式"></a><a href="#寄生构造函数模式" title="寄生构造函数模式"></a>寄生构造函数模式</h2><p>如果在前面几种模式不适用的情况下，可以使用寄生构造函数模式。这种模式的基本思想是创建一个函数，该函数的作用仅仅是封装创建对象的代码，然后返回新创建的对象。如下面的例子所示：</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">Person</span>(<span class="params">name, age, job</span>)</span>&#123;</span><br><span class="line">    <span class="keyword">var</span> o = <span class="keyword">new</span> <span class="built_in">Object</span>();</span><br><span class="line">    o.name = name;</span><br><span class="line">    o.age = age;</span><br><span class="line">    o.job = job;</span><br><span class="line">    o.sayName = <span class="function"><span class="keyword">function</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">        alert(<span class="keyword">this</span>.name);</span><br><span class="line">    &#125;;</span><br><span class="line">    <span class="keyword">return</span> o;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> person1 = <span class="keyword">new</span> Person(<span class="string">"james"</span>，<span class="number">9</span>，<span class="string">"student"</span>);</span><br></pre></td></tr></table></figure>
+<p>通过上面的例子我们可以发现，其实这个模式和工厂模式基本上是一摸一样的，只不过我们是采用 new 操作符最后来创建对象。</p>
+<p>注意在构造函数不返回值的情况下，默认会返回新创建的对象，而通过在构造函数的末尾添加一个 return 语句，可以重写调用构造函数时返回的值。</p>
+<p>优点：我对这个模式的理解是，它主要是基于一个已有的类型，在实例化时对实例化的对象进行扩展。这样既不用修改原来的构造函数，也达到了扩展对象的目的。</p>
+<p>缺点：和工厂模式一样的问题，不能依赖 instanceof 操作符来确定对象的类型。</p>
+<h2 id="稳妥构造函数模式"><a href="#稳妥构造函数模式" class="headerlink" title="稳妥构造函数模式"></a><a href="#稳妥构造函数模式" title="稳妥构造函数模式"></a>稳妥构造函数模式</h2><p>Douglas Crockford 发明了 JavaScript 中的稳妥对象这个概念。所谓稳妥对象，指的就是，没有公共属性，而且其方法也不使用 this 的对象。稳妥对象最适合在一些安全的环境中（这些环境中会禁止使用 this 和 new），或者在防止数据被其他应用程序改动时使用。</p>
+<p>稳妥构造函数遵循与寄生构造函数类似的模式，但有两点不同：一是新创建的对象的实例方法不引用 this ；二是不使用 new 操作符调用构造函数。因此我们可以将前面的例子改写如下：</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">Person</span>(<span class="params">name, age, job</span>)</span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//创建要返回的对象</span></span><br><span class="line">    <span class="keyword">var</span> o = <span class="keyword">new</span> <span class="built_in">Object</span>();</span><br><span class="line"></span><br><span class="line">    <span class="comment">//可以在这里定义私有变量和函数</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">//添加方法</span></span><br><span class="line">    o.sayName = <span class="function"><span class="keyword">function</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">        <span class="built_in">console</span>.log(<span class="keyword">this</span>.name);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//返回对象</span></span><br><span class="line">    <span class="keyword">return</span> o;</span><br><span class="line">&#125; </span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> person1 =  Person(<span class="string">"james"</span>，<span class="number">9</span>，<span class="string">"student"</span>);</span><br><span class="line"></span><br><span class="line">person1.sayName(); <span class="comment">// "james"</span></span><br></pre></td></tr></table></figure>
+<p>优点：以上面为例，除了 sayName 方法外，没有别的方法可以访问数据成员，这就是稳妥构造函数提供的安全性。</p>
+<p>缺点：和寄生构造函数一样，没有办法使用 instanceof 操作符来判断对象的类型</p>
+<h4 id="原文地址"><a href="#原文地址" class="headerlink" title="原文地址"></a>原文地址</h4><p> <a href="http://cavszhouyou.top/JavaScript%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3%E4%B9%8B%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA.html" target="_blank" rel="noopener">CavsZhouyou’s Blog</a></p>
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">标签</span><br>
+                
+    <a class="tag tag--primary tag--small t-link" href="/all-tags/面试-前端-javascript/">面试 前端 javascript</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    <a class="post-action-btn btn btn--disabled">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">上一篇</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/" data-tooltip="Chrome浏览器通过SwitchyOmega实现自动代理切换" aria-label="下一篇: Chrome浏览器通过SwitchyOmega实现自动代理切换">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">下一篇</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Diesen Beitrag teilen">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2021/02/23/JavaScript深入理解之对象创建/" title="分享到 Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2021/02/23/JavaScript深入理解之对象创建/" title="分享到 Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2021/02/23/JavaScript深入理解之对象创建/" title="分享到 Google+">
+                    <i class="fab fa-google-plus" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2021/02/23/JavaScript深入理解之对象创建/" title="分享到 Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2021/02/23/JavaScript深入理解之对象创建/&amp;title=JavaScript深入理解之对象创建" title="分享到 QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2021/02/23/JavaScript深入理解之对象创建/" title="分享到 Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Nach oben">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+    </div>
+</article>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2021 Leo July. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    <a class="post-action-btn btn btn--disabled">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">上一篇</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2021/01/20/Chrome浏览器通过SwitchyOmega实现自动代理切换/" data-tooltip="Chrome浏览器通过SwitchyOmega实现自动代理切换" aria-label="下一篇: Chrome浏览器通过SwitchyOmega实现自动代理切换">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">下一篇</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Diesen Beitrag teilen">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2021/02/23/JavaScript深入理解之对象创建/" title="分享到 Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2021/02/23/JavaScript深入理解之对象创建/" title="分享到 Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2021/02/23/JavaScript深入理解之对象创建/" title="分享到 Google+">
+                    <i class="fab fa-google-plus" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2021/02/23/JavaScript深入理解之对象创建/" title="分享到 Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2021/02/23/JavaScript深入理解之对象创建/&amp;title=JavaScript深入理解之对象创建" title="分享到 QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2021/02/23/JavaScript深入理解之对象创建/" title="分享到 Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Nach oben">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+    <i id="btn-close-shareoptions" class="fa fa-times"></i>
+    <ul class="share-options">
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2021/02/23/JavaScript深入理解之对象创建/">
+                    <i class="fab fa-facebook" aria-hidden="true"></i><span>分享到 Facebook</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2021/02/23/JavaScript深入理解之对象创建/">
+                    <i class="fab fa-twitter" aria-hidden="true"></i><span>分享到 Twitter</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2021/02/23/JavaScript深入理解之对象创建/">
+                    <i class="fab fa-google-plus" aria-hidden="true"></i><span>分享到 Google+</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2021/02/23/JavaScript深入理解之对象创建/">
+                    <i class="fab fa-weibo" aria-hidden="true"></i><span>分享到 Weibo</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2021/02/23/JavaScript深入理解之对象创建/&amp;title=JavaScript深入理解之对象创建">
+                    <i class="fab fa-qq" aria-hidden="true"></i><span>分享到 QQ</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2021/02/23/JavaScript深入理解之对象创建/">
+                    <i class="fa fa-star" aria-hidden="true"></i><span>分享到 Qzone</span>
+                </a>
+            </li>
+        
+    </ul>
+</div>
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180" alt="作者的图片">
+        
+            <h4 id="about-card-name">Leo July</h4>
+        <!--  -->
+            <div id="about-card-bio">vue,weex,ES6,js,jq,html5,less,css3,git,webpack</div>
+        <!--  -->
+        <!--  -->
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br>
+                高级前端工程师
+            </div>
+        <!--  -->
+        
+    </div>
+</div>
+
+        
+            <div id="algolia-search-modal" class="modal-container">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="close-button"><i class="fa fa-times"></i></span>
+            <a href="https://algolia.com" target="_blank" rel="noopener" class="searchby-algolia text-color-light link-unstyled">
+                <span class="searchby-algolia-text text-color-light text-small">by</span>
+                <img class="searchby-algolia-logo" src="https://www.algolia.com/static_assets/images/press/downloads/algolia-light.svg">
+            </a>
+            <i class="search-icon fa fa-search"></i>
+            <form id="algolia-search-form">
+                <input type="text" id="algolia-search-input" name="search" class="form-control input--large search-input" placeholder="Search ">
+            </form>
+        </div>
+        <div class="modal-body">
+            <div class="no-result text-color-light text-center">没有找到文章</div>
+            <div class="results">
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/16/h5-video/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/01/16/h5-video/video.png" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/16/h5-video/">
+                            <h3 class="media-heading">h5 video移动端填坑记</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年1月16日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/22/vue-chat-room/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/01/22/vue-chat-room/timg.jpeg" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/22/vue-chat-room/">
+                            <h3 class="media-heading">vue 仿app聊天室</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年1月22日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/23/vue-barrage/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/01/23/vue-barrage/thumbnail.jpg" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/01/23/vue-barrage/">
+                            <h3 class="media-heading">vue 横屏滚动弹幕</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年1月23日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-left">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/02/23/wechat/">
+                            <img class="media-image" src="https://leo-july.github.io/2018/02/23/wechat/show.jpg" width="90" height="90">
+                        </a>
+                    </div>
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/02/23/wechat/">
+                            <h3 class="media-heading">微信小程序中遇到的坑和一些小技巧</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年2月23日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/js-curring/">
+                            <h3 class="media-heading">js-柯里化</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- clearReading: true
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York"
+comments: false -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/Hexo-browsersync/">
+                            <h3 class="media-heading">Hexo使用browsersync浏览器热更新</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/axios/">
+                            <h3 class="media-heading">axios 二次封装，带有静默模式</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!--
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/26/jsDom/">
+                            <h3 class="media-heading">jsDom is not a function</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月26日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/29/xcode-select/">
+                            <h3 class="media-heading">mac xcode-select 下载安装</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月29日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://leo-july.github.io/2018/11/29/ssh -T git-github-com/">
+                            <h3 class="media-heading">ssh -T git@github.com 出现Permission denied (publickey)</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    2018年11月29日
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><!-- 
+thumbnailImage: thumbnail.jpg
+thumbnailImagePosition: bottom
+autoThumbnailImage: yes
+metaAlignment: center
+coverImage: cover.png
+coverImage: cover.jpg
+coverCaption: "A beautiful sunrise"
+coverMeta: out
+coverSize: full
+coverSize: partial
+gallery:
+    - image-3.jpg "New York" -->
+<a id="more"></a></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+            </div>
+        </div>
+        <div class="modal-footer">
+            <p class="results-count text-medium" data-message-zero="没有找到文章" data-message-one="找到 1 篇文章" data-message-other="找到 {n} 篇文章">
+                找到 26 篇文章
+            </p>
+        </div>
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="/assets/js/script-vufjrm3fmbuttogo1hxuu0w9w0sesk5iyysjuguc2hdhufot9szxg8twijry.min.js"></script>
+<!--SCRIPTS END-->
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.14.1/moment-with-locales.min.js"></script>
+    <script src="//cdn.jsdelivr.net/algoliasearch/3/algoliasearch.min.js"></script>
+    <script>
+        var algoliaClient = algoliasearch('QDFOH7HV1P', '5132f23a0d2983147e805aa47a5df3e4');
+        var algoliaIndex = algoliaClient.initIndex('tranquilpeak');
+    </script>
+
+
+    </body>
+</html>
