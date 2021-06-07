@@ -15,14 +15,14 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"},"articleBody":"\n1.安装依赖包\n//一键安装上面四个依赖\n1yum \\-y install gcc zlib zlib\\-devel pcre\\-devel openssl openssl\\-devel\n2.下载并解压安装包\n//创建一个文件夹\n123456cd /usr/localmkdir nginxcd nginxwget http://nginx.org/download/nginx\\-1.13.7.tar.gztar \\-xvf nginx\\-1.13.7.tar.gz\n3.安装nginx\n123456789cd /usr/local/nginxcd nginx\\-1.13.7./configuremakemake install\n4.配置nginx.conf\n12\\# 打开配置文件vi /usr/local/nginx/conf/nginx.conf\n将端口号改成8089，因为可能apeache占用80端口，apeache端口尽量不要修改，我们选择修改nginx端口。\nlocalhost修改为你服务器ip地址。\n5.启动nginx\n1234/usr/local/nginx/sbin/nginx \\-s reload如果出现报错：nginx: \\[error\\] open() ＂/usr/local/nginx/logs/nginx.pid＂ failed则运行： /usr/local/nginx/sbin/nginx \\-c /usr/local/nginx/conf/nginx.conf\n再次启动即可！\n查看nginx进程是否启动：\n1ps \\-ef | grep nginx\n6.若想使用外部主机连接上虚拟机访问端口192.168.131.2，需要关闭虚拟机的防火墙：\ncentOS6及以前版本使用命令： systemctl stop iptables.service\ncentOS7关闭防火墙命令： systemctl stop firewalld.service\n随后访问该ip即可看到nginx界面。\n7.访问服务器ip查看（备注，由于我监听的仍是80端口，所以ip后面的端口号被省略）\n安装完成一般常用命令\n进入安装目录中，\n123456789命令： cd /usr/local/nginx/sbin启动，关闭，重启，命令：./nginx 启动./nginx \\-s stop 关闭./nginx \\-s reload 重启","dateCreated":"2021-06-07T10:19:44+08:00","dateModified":"2021-06-07T10:20:31+08:00","datePublished":"2021-06-07T10:19:44+08:00","description":"\n","headline":"linux-install-nginx","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://leo-july.github.io/2021/06/07/linux-install-nginx/"},"publisher":{"@type":"Organization","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180","logo":{"@type":"ImageObject","url":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"}},"url":"https://leo-july.github.io/2021/06/07/linux-install-nginx/","keywords":"nginx"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"},"articleBody":"\n1.安装依赖包\n//一键安装上面四个依赖\n1yum \\-y install gcc zlib zlib\\-devel pcre\\-devel openssl openssl\\-devel\n2.下载并解压安装包\n//创建一个文件夹\n123456cd /usr/localmkdir nginxcd nginxwget http://nginx.org/download/nginx\\-1.13.7.tar.gztar \\-xvf nginx\\-1.13.7.tar.gz\n3.安装nginx\n123456789cd /usr/local/nginxcd nginx\\-1.13.7./configure --prefix=/usr/local/nginx --with-http_ssl_module  //sslmakemake install\n4.配置nginx.conf\n12\\# 打开配置文件vi /usr/local/nginx/conf/nginx.conf\n将端口号改成8089，因为可能apeache占用80端口，apeache端口尽量不要修改，我们选择修改nginx端口。\nlocalhost修改为你服务器ip地址。\n5.启动nginx\n1234/usr/local/nginx/sbin/nginx \\-s reload如果出现报错：nginx: \\[error\\] open() ＂/usr/local/nginx/logs/nginx.pid＂ failed则运行： /usr/local/nginx/sbin/nginx \\-c /usr/local/nginx/conf/nginx.conf\n再次启动即可！\n查看nginx进程是否启动：\n1ps \\-ef | grep nginx\n6.若想使用外部主机连接上虚拟机访问端口192.168.131.2，需要关闭虚拟机的防火墙：\ncentOS6及以前版本使用命令： systemctl stop iptables.service\ncentOS7关闭防火墙命令： systemctl stop firewalld.service\n随后访问该ip即可看到nginx界面。\n7.访问服务器ip查看（备注，由于我监听的仍是80端口，所以ip后面的端口号被省略）\n安装完成一般常用命令\n进入安装目录中，\n123456789命令： cd /usr/local/nginx/sbin启动，关闭，重启，命令：./nginx 启动./nginx \\-s stop 关闭./nginx \\-s reload 重启","dateCreated":"2021-06-07T10:19:44+08:00","dateModified":"2021-06-07T11:17:09+08:00","datePublished":"2021-06-07T10:19:44+08:00","description":"\n","headline":"linux-install-nginx","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://leo-july.github.io/2021/06/07/linux-install-nginx/"},"publisher":{"@type":"Organization","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180","logo":{"@type":"ImageObject","url":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"}},"url":"https://leo-july.github.io/2021/06/07/linux-install-nginx/","keywords":"nginx"}</script>
     <meta name="keywords" content="linux,nginx">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="linux-install-nginx">
 <meta property="og:url" content="https://leo-july.github.io/2021/06/07/linux-install-nginx/index.html">
 <meta property="og:site_name" content="leo July&#39;s blog">
 <meta property="og:locale" content="zh-cn">
-<meta property="og:updated_time" content="2021-06-07T02:20:31.652Z">
+<meta property="og:updated_time" content="2021-06-07T03:17:09.816Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="linux-install-nginx">
     
@@ -238,7 +238,7 @@
 <p>//创建一个文件夹</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">cd /usr/local</span><br><span class="line">mkdir nginx</span><br><span class="line">cd nginx</span><br><span class="line"></span><br><span class="line">wget http://nginx.org/download/nginx\-1.13.7.tar.gz</span><br><span class="line">tar \-xvf nginx\-1.13.7.tar.gz</span><br></pre></td></tr></table></figure>
 <p>3.安装nginx</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">cd /usr/local/nginx</span><br><span class="line"></span><br><span class="line">cd nginx\-1.13.7</span><br><span class="line"></span><br><span class="line">./configure</span><br><span class="line"></span><br><span class="line">make</span><br><span class="line"></span><br><span class="line">make install</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">cd /usr/local/nginx</span><br><span class="line"></span><br><span class="line">cd nginx\-1.13.7</span><br><span class="line"></span><br><span class="line">./configure --prefix=/usr/local/nginx --with-http_ssl_module  //ssl</span><br><span class="line"></span><br><span class="line">make</span><br><span class="line"></span><br><span class="line">make install</span><br></pre></td></tr></table></figure>
 <p>4.配置nginx.conf</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">\# 打开配置文件</span><br><span class="line">vi /usr/local/nginx/conf/nginx.conf</span><br></pre></td></tr></table></figure>
 <p>将端口号改成8089，因为可能apeache占用80端口，apeache端口尽量不要修改，我们选择修改nginx端口。</p>
@@ -294,7 +294,7 @@
     </nav>
     <ul class="post-actions post-action-share">
         <li class="post-action hide-lg hide-md hide-sm">
-            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Diesen Beitrag teilen">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
                 <i class="fa fa-share-alt" aria-hidden="true"></i>
             </a>
         </li>
@@ -350,7 +350,7 @@
         
         <li class="post-action">
             
-                <a class="post-action-btn btn btn--default" href="#" aria-label="Nach oben">
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
             
                 <i class="fa fa-list" aria-hidden="true"></i>
             </a>
@@ -399,7 +399,7 @@
     </nav>
     <ul class="post-actions post-action-share">
         <li class="post-action hide-lg hide-md hide-sm">
-            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Diesen Beitrag teilen">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
                 <i class="fa fa-share-alt" aria-hidden="true"></i>
             </a>
         </li>
@@ -455,7 +455,7 @@
         
         <li class="post-action">
             
-                <a class="post-action-btn btn btn--default" href="#" aria-label="Nach oben">
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
             
                 <i class="fa fa-list" aria-hidden="true"></i>
             </a>
