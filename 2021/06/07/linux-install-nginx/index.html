@@ -6,21 +6,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="leo July&#39;s blog">
-    <title>归档: 2019/12 - leo July&#39;s blog</title>
+    <title>linux-install-nginx - leo July&#39;s blog</title>
     <meta name="author" content="Leo July">
+    
+        <meta name="keywords" content="linux,nginx">
     
     
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{}</script>
-    <meta property="og:type" content="blog">
-<meta property="og:title" content="leo July&#39;s blog">
-<meta property="og:url" content="https://leo-july.github.io/all-archives/2019/12/index.html">
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"},"articleBody":"\n1.安装依赖包\n//一键安装上面四个依赖\n1yum \\-y install gcc zlib zlib\\-devel pcre\\-devel openssl openssl\\-devel\n2.下载并解压安装包\n//创建一个文件夹\n123456cd /usr/localmkdir nginxcd nginxwget http://nginx.org/download/nginx\\-1.13.7.tar.gztar \\-xvf nginx\\-1.13.7.tar.gz\n3.安装nginx\n123456789cd /usr/local/nginxcd nginx\\-1.13.7./configuremakemake install\n4.配置nginx.conf\n12\\# 打开配置文件vi /usr/local/nginx/conf/nginx.conf\n将端口号改成8089，因为可能apeache占用80端口，apeache端口尽量不要修改，我们选择修改nginx端口。\nlocalhost修改为你服务器ip地址。\n5.启动nginx\n1234/usr/local/nginx/sbin/nginx \\-s reload如果出现报错：nginx: \\[error\\] open() ＂/usr/local/nginx/logs/nginx.pid＂ failed则运行： /usr/local/nginx/sbin/nginx \\-c /usr/local/nginx/conf/nginx.conf\n再次启动即可！\n查看nginx进程是否启动：\n1ps \\-ef | grep nginx\n6.若想使用外部主机连接上虚拟机访问端口192.168.131.2，需要关闭虚拟机的防火墙：\ncentOS6及以前版本使用命令： systemctl stop iptables.service\ncentOS7关闭防火墙命令： systemctl stop firewalld.service\n随后访问该ip即可看到nginx界面。\n7.访问服务器ip查看（备注，由于我监听的仍是80端口，所以ip后面的端口号被省略）\n安装完成一般常用命令\n进入安装目录中，\n123456789命令： cd /usr/local/nginx/sbin启动，关闭，重启，命令：./nginx 启动./nginx \\-s stop 关闭./nginx \\-s reload 重启","dateCreated":"2021-06-07T10:19:44+08:00","dateModified":"2021-06-07T10:20:31+08:00","datePublished":"2021-06-07T10:19:44+08:00","description":"\n","headline":"linux-install-nginx","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://leo-july.github.io/2021/06/07/linux-install-nginx/"},"publisher":{"@type":"Organization","name":"Leo July","sameAs":["https://github.com/Leo-July","mailto:15563861385@163.com","https://xuebin.me","https://zhangmiao.cc/"],"image":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180","logo":{"@type":"ImageObject","url":"http://p4.music.126.net/W3NhJpLfagwydeB5FTRHtQ==/19212866184185039.jpg?param=180y180"}},"url":"https://leo-july.github.io/2021/06/07/linux-install-nginx/","keywords":"nginx"}</script>
+    <meta name="keywords" content="linux,nginx">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="linux-install-nginx">
+<meta property="og:url" content="https://leo-july.github.io/2021/06/07/linux-install-nginx/index.html">
 <meta property="og:site_name" content="leo July&#39;s blog">
 <meta property="og:locale" content="zh-cn">
+<meta property="og:updated_time" content="2021-06-07T02:20:31.652Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="leo July&#39;s blog">
+<meta name="twitter:title" content="linux-install-nginx">
     
     
         
@@ -44,7 +48,7 @@
             <!-- Define author's picture -->
 
 
-<header id="header" data-behavior="1">
+<header id="header" data-behavior="4">
     <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
     <div class="header-title">
         <a class="header-title-link" href="/ ">leo July&#39;s blog</a>
@@ -67,7 +71,7 @@
         
     
 
-<nav id="sidebar" data-behavior="1">
+<nav id="sidebar" data-behavior="4">
     <div class="sidebar-container">
         
             <div class="sidebar-profile">
@@ -196,128 +200,169 @@
 </nav>
 
             
-            <div id="main" data-behavior="1"
+            <div id="main" data-behavior="4"
                  class="
                         hasCoverMetaIn
                         ">
                 
-    <section class="postShorten-group main-content-wrap">
+<article class="post">
     
     
-    <article class="postShorten postShorten--thumbnailimg-right">
-        <div class="postShorten-wrap">
-            
-            <div class="postShorten-header">
-                <h1 class="postShorten-title">
-                    
-                        <a class="link-unstyled" href="/2019/12/11/uniapp-中使用fly/">
-                            uniapp 中使用fly
-                        </a>
-                    
-                </h1>
-                <div class="postShorten-meta">
-    <time datetime="2019-12-11T16:53:08+08:00">
+        <div class="post-header main-content-wrap text-left">
+    
+        <h1 class="post-title">
+            linux-install-nginx
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2021-06-07T10:19:44+08:00">
 	
-		    12月 11, 2019
-    	
-    </time>
-    
-        <span>发布在 </span>
-        
-    <a class="category-link" href="/all-categories/js/">js</a>
-
-
-    
-</div>
-
-            </div>
-            
-                <div class="postShorten-excerpt">
-                    <!-- 
-thumbnailImage: thumbnail.jpg
-thumbnailImagePosition: bottom
-autoThumbnailImage: yes
-metaAlignment: center
-coverImage: cover.png
-coverImage: cover.jpg
-coverCaption: "A beautiful sunrise"
-coverMeta: out
-coverSize: full
-coverSize: partial
-gallery:
-    - image-3.jpg "New York" -->
-<a id="more"></a>
-                    
-                        <a href="/2019/12/11/uniapp-中使用fly/" class="postShorten-excerpt_link link">
-                            阅读全文
-                        </a>
-                        
-                    
-                </div>
-            
-        </div>
-        
-    </article>
-    
-    
-    <article class="postShorten postShorten--thumbnailimg-right">
-        <div class="postShorten-wrap">
-            
-            <div class="postShorten-header">
-                <h1 class="postShorten-title">
-                    
-                        <a class="link-unstyled" href="/2019/12/11/heades-值不能带有下划线/">
-                            heades 值不能带有下划线
-                        </a>
-                    
-                </h1>
-                <div class="postShorten-meta">
-    <time datetime="2019-12-11T15:57:16+08:00">
-	
-		    12月 11, 2019
+		    6月 07, 2021
     	
     </time>
     
 </div>
 
-            </div>
-            
-                <div class="postShorten-excerpt">
-                    <!-- 
-thumbnailImage: thumbnail.jpg
-thumbnailImagePosition: bottom
-autoThumbnailImage: yes
-metaAlignment: center
-coverImage: cover.png
-coverImage: cover.jpg
-coverCaption: "A beautiful sunrise"
-coverMeta: out
-coverSize: full
-coverSize: partial
-gallery:
-    - image-3.jpg "New York" -->
-<a id="more"></a>
-                    
-                        <a href="/2019/12/11/heades-值不能带有下划线/" class="postShorten-excerpt_link link">
-                            阅读全文
-                        </a>
-                        
-                    
-                </div>
-            
-        </div>
-        
-    </article>
     
-    <div class="pagination-bar">
-    <ul class="pagination">
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<p>1.安装依赖包</p>
+<p>//一键安装上面四个依赖</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">yum \-y install gcc zlib zlib\-devel pcre\-devel openssl openssl\-devel</span><br></pre></td></tr></table></figure>
+<p>2.下载并解压安装包</p>
+<p>//创建一个文件夹</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">cd /usr/local</span><br><span class="line">mkdir nginx</span><br><span class="line">cd nginx</span><br><span class="line"></span><br><span class="line">wget http://nginx.org/download/nginx\-1.13.7.tar.gz</span><br><span class="line">tar \-xvf nginx\-1.13.7.tar.gz</span><br></pre></td></tr></table></figure>
+<p>3.安装nginx</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">cd /usr/local/nginx</span><br><span class="line"></span><br><span class="line">cd nginx\-1.13.7</span><br><span class="line"></span><br><span class="line">./configure</span><br><span class="line"></span><br><span class="line">make</span><br><span class="line"></span><br><span class="line">make install</span><br></pre></td></tr></table></figure>
+<p>4.配置nginx.conf</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">\# 打开配置文件</span><br><span class="line">vi /usr/local/nginx/conf/nginx.conf</span><br></pre></td></tr></table></figure>
+<p>将端口号改成8089，因为可能apeache占用80端口，apeache端口尽量不要修改，我们选择修改nginx端口。</p>
+<p>localhost修改为你服务器ip地址。</p>
+<p>5.启动nginx</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">/usr/local/nginx/sbin/nginx \-s reload</span><br><span class="line">如果出现报错：nginx: \[error\] open() ＂/usr/local/nginx/logs/nginx.pid＂ failed</span><br><span class="line"></span><br><span class="line">则运行： /usr/local/nginx/sbin/nginx \-c /usr/local/nginx/conf/nginx.conf</span><br></pre></td></tr></table></figure>
+<p>再次启动即可！</p>
+<p>查看nginx进程是否启动：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ps \-ef | grep nginx</span><br></pre></td></tr></table></figure>
+<p>6.若想使用外部主机连接上虚拟机访问端口192.168.131.2，需要关闭虚拟机的防火墙：</p>
+<p>centOS6及以前版本使用命令： systemctl stop iptables.service</p>
+<p>centOS7关闭防火墙命令： systemctl stop firewalld.service</p>
+<p>随后访问该ip即可看到nginx界面。</p>
+<p>7.访问服务器ip查看（备注，由于我监听的仍是80端口，所以ip后面的端口号被省略）</p>
+<p>安装完成一般常用命令</p>
+<p>进入安装目录中，</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">命令： cd /usr/local/nginx/sbin</span><br><span class="line"></span><br><span class="line">启动，关闭，重启，命令：</span><br><span class="line"></span><br><span class="line">./nginx 启动</span><br><span class="line"></span><br><span class="line">./nginx \-s stop 关闭</span><br><span class="line"></span><br><span class="line">./nginx \-s reload 重启</span><br></pre></td></tr></table></figure>
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">标签</span><br>
+                
+    <a class="tag tag--primary tag--small t-link" href="/all-tags/nginx/">nginx</a>
+
+            </div>
         
         
-        <li class="pagination-number">第 1 页 共 1 页</li>
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    <a class="post-action-btn btn btn--disabled">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">上一篇</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2021/02/23/JavaScript深入理解之继承/" data-tooltip="JavaScript深入理解之继承" aria-label="下一篇: JavaScript深入理解之继承">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">下一篇</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Diesen Beitrag teilen">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2021/06/07/linux-install-nginx/" title="分享到 Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2021/06/07/linux-install-nginx/" title="分享到 Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2021/06/07/linux-install-nginx/" title="分享到 Google+">
+                    <i class="fab fa-google-plus" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2021/06/07/linux-install-nginx/" title="分享到 Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2021/06/07/linux-install-nginx/&amp;title=linux-install-nginx" title="分享到 QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2021/06/07/linux-install-nginx/" title="分享到 Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Nach oben">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
     </ul>
 </div>
 
-</section>
+
+        
+        
+    </div>
+</article>
 
 
 
@@ -328,6 +373,153 @@ gallery:
 </footer>
 
             </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    <a class="post-action-btn btn btn--disabled">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">上一篇</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2021/02/23/JavaScript深入理解之继承/" data-tooltip="JavaScript深入理解之继承" aria-label="下一篇: JavaScript深入理解之继承">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">下一篇</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Diesen Beitrag teilen">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2021/06/07/linux-install-nginx/" title="分享到 Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2021/06/07/linux-install-nginx/" title="分享到 Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2021/06/07/linux-install-nginx/" title="分享到 Google+">
+                    <i class="fab fa-google-plus" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2021/06/07/linux-install-nginx/" title="分享到 Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2021/06/07/linux-install-nginx/&amp;title=linux-install-nginx" title="分享到 QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2021/06/07/linux-install-nginx/" title="分享到 Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Nach oben">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+    <i id="btn-close-shareoptions" class="fa fa-times"></i>
+    <ul class="share-options">
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://leo-july.github.io/2021/06/07/linux-install-nginx/">
+                    <i class="fab fa-facebook" aria-hidden="true"></i><span>分享到 Facebook</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://leo-july.github.io/2021/06/07/linux-install-nginx/">
+                    <i class="fab fa-twitter" aria-hidden="true"></i><span>分享到 Twitter</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="https://plus.google.com/share?url=https://leo-july.github.io/2021/06/07/linux-install-nginx/">
+                    <i class="fab fa-google-plus" aria-hidden="true"></i><span>分享到 Google+</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://leo-july.github.io/2021/06/07/linux-install-nginx/">
+                    <i class="fab fa-weibo" aria-hidden="true"></i><span>分享到 Weibo</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://leo-july.github.io/2021/06/07/linux-install-nginx/&amp;title=linux-install-nginx">
+                    <i class="fab fa-qq" aria-hidden="true"></i><span>分享到 QQ</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://leo-july.github.io/2021/06/07/linux-install-nginx/">
+                    <i class="fa fa-star" aria-hidden="true"></i><span>分享到 Qzone</span>
+                </a>
+            </li>
+        
+    </ul>
+</div>
+
             
         </div>
         
